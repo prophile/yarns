@@ -19,7 +19,6 @@ typedef struct _yarn_meta
 
 typedef struct _yarn
 {
-	unsigned char* stack;
 	yarn_meta meta;
 	yarn_t next;
 	yarn_t prev;
@@ -42,69 +41,94 @@ static yarn_thread_data _ttd;
 #define TTDINIT() { _ttd.yarn_current = 0; _ttd.runtime_remaining = 0; }
 #endif
 
+#if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
+#define BASE_CONTEXT_NEEDS_STACK
+#endif
+
 static void yarn_check_stack ( const void* base )
 {
 	// make sure that base is page-aligned (ie a multiple of 4096)
 	unsigned long ul = (unsigned long)base;
-	if (ul & 4095)
+	if (ul & 4095 || !ul)
 	{
-		printf("ul&4095=%d\n", ul & 4095);
+		printf("ul&4095=%d\n", (int)(ul % 4096));
 		assert(0);
 	}
 }
 
-static void yarn_launcher ( yarn* tsk, void (*routine)(void*), void* udata )
+static void yarn_launcher ( yarn* active_yarn, void (*routine)(void*), void* udata )
 {
 	// basically a bootstrap routine for each yarn which runs the routine then cleans up
 	routine(udata);
 	TTD.runtime_remaining = SCHEDULER_UNSCHEDULE;
 }
 
-static volatile int make_trap = 1; // this traps the odd situation where makecontext doesn't work and we get random code jumping in here
-
-yarn_t yarn_new ( void (*routine)(void*), void* udata )
+static void allocate_stack ( ucontext_t* ctx )
 {
-	// grab memory
-	yarn* tsk;
-	make_trap = 0;
-	tsk = (yarn*)malloc(sizeof(yarn));
-	tsk->stack = page_allocate(STACK_SIZE);
-	assert(tsk);
-	//tsk->meta.scheduler_data = 0;
-	// prepare the context
-	getcontext(&tsk->meta.context);
-	assert(make_trap == 0);
-	// insert it into the yarn list
+	ctx->uc_stack.ss_size = STACK_SIZE;
+	ctx->uc_stack.ss_sp = page_allocate(STACK_SIZE);
+	assert(ctx->uc_stack.ss_sp);
+	ctx->uc_stack.ss_flags = 0;
+}
+
+static void deallocate_stack ( ucontext_t* ctx )
+{
+	page_deallocate(ctx->uc_stack.ss_sp, STACK_SIZE);
+}
+
+static void basic_launch ()
+{
+	puts("basic_launch");
+	_Exit(0);
+}
+
+int __make_trap = 1; // this traps the odd situation where makecontext doesn't work and we get random code jumping in here
+
+static void list_insert ( yarn* active_yarn )
+{
 	if (yarn_list)
 	{
 		if (yarn_list->prev)
 		{
-			tsk->prev = yarn_list->prev;
-			tsk->next = yarn_list;
-			tsk->prev->next = tsk;
-			yarn_list->prev = tsk;
+			active_yarn->prev = yarn_list->prev;
+			active_yarn->next = yarn_list;
+			active_yarn->prev->next = active_yarn;
+			yarn_list->prev = active_yarn;
 		}
 		else
 		{
-			yarn_list->prev = yarn_list->next = tsk;
-			tsk->prev = tsk->next = yarn_list;
+			yarn_list->prev = yarn_list->next = active_yarn;
+			active_yarn->prev = active_yarn->next = yarn_list;
 		}
 	}
 	else
 	{
-		tsk->next = 0;
-		tsk->prev = 0;
+		active_yarn->next = 0;
+		active_yarn->prev = 0;
 	}
-	yarn_list = tsk;
+	yarn_list = active_yarn;
+}
+
+yarn_t yarn_new ( void (*routine)(void*), void* udata )
+{
+	// grab memory
+	yarn* active_yarn;
+	active_yarn = (yarn*)malloc(sizeof(yarn));
+	assert(active_yarn);
+	// prepare the context
+	// insert it into the yarn list
+	list_insert(active_yarn);
 	// set up stack and such
-	tsk->meta.context.uc_stack.ss_size = STACK_SIZE;
-	tsk->meta.context.uc_stack.ss_sp = &(tsk->stack[0]);
-	tsk->meta.context.uc_stack.ss_flags = 0;
-	yarn_check_stack(tsk->meta.context.uc_stack.ss_sp);
-	// run makecontext to direct it over to the bootstrap
-	makecontext(&(tsk->meta.context), (void (*)())yarn_launcher, 3, tsk, routine, udata);
-	make_trap = 1;
-	return (yarn_t)tsk;
+	allocate_stack(&(active_yarn->meta.context));
+	yarn_check_stack(active_yarn->meta.context.uc_stack.ss_sp);
+	// run getcontext & makecontext to direct it over to the bootstrap
+	//makecontext(&(active_yarn->meta.context), (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
+	__make_trap = 0;
+	getcontext(&active_yarn->meta.context);
+	assert(__make_trap == 0);
+	__make_trap = 1;
+	makecontext(&active_yarn->meta.context, &basic_launch, 0);
+	return (yarn_t)active_yarn;
 }
 
 void yarn_yield ( yarn_t target )
@@ -126,6 +150,9 @@ static void yarn_processor ( unsigned long procID )
 	assert(&TTD);
 	// repeatedly ask the scheduler for the next job
 	scheduler_job activeJob;
+#ifdef BASE_CONTEXT_NEEDS_STACK
+	allocate_stack(&(TTD.sched_context));
+#endif
 	activeJob.pid = 0;
 	activeJob.runtime = 0;
 	activeJob.processor = procID;
@@ -133,7 +160,7 @@ static void yarn_processor ( unsigned long procID )
 	while (!breakProcessor)
 	{
 		scheduler_select(&activeJob);
-		printf("job %lu @ proc %d\n", activeJob.pid, procID);
+		printf("job %lu @ proc %d\n", activeJob.pid, (int)procID);
 		// set all the stuff up
 		TTD.yarn_current = (yarn*)activeJob.pid;
 		TTD.yarn_current->meta.context.uc_link = &(TTD.sched_context);
@@ -149,23 +176,26 @@ static void yarn_processor ( unsigned long procID )
 		{
 			TTD.yarn_current->prev->next = TTD.yarn_current->next;
 			TTD.yarn_current->next->prev = TTD.yarn_current->prev;
-			page_deallocate(TTD.yarn_current->stack, STACK_SIZE);
+			deallocate_stack(&(TTD.yarn_current->meta.context));
 			free(TTD.yarn_current);
 		}
 	}
+	deallocate_stack(&(TTD.sched_context));
 }
 
 // number of parallel processing cores, for the moment assume 2
+#ifdef YARNS_ENABLE_SMP
 static int numprocs ()
 {
 	return 2;
 }
+#endif
 
 void yarn_process ()
 {
 // look through yarns
-	yarn* tsk = yarn_list;
-	if (!tsk) return;
+	yarn* active_yarn = yarn_list;
+	if (!active_yarn) return;
 #ifdef YARNS_ENABLE_SMP
 	scheduler_init(numprocs());
 #else
@@ -174,9 +204,9 @@ void yarn_process ()
 	// set up all the yarns in the scheduler
 	do
 	{
-		scheduler_insert((unsigned long)tsk);
-		tsk = tsk->next;
-	} while (tsk && tsk != yarn_list);
+		scheduler_insert((unsigned long)active_yarn);
+		active_yarn = active_yarn->next;
+	} while (active_yarn && active_yarn != yarn_list);
 #ifdef YARNS_ENABLE_SMP
 	{
 		// create the secondary threads

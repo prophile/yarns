@@ -4,7 +4,7 @@
 #include "config.h"
 #include <stdlib.h>
 
-#if YARN_SCHEDULER == YARN_SCHED_ROUND_ROBIN
+#if YARNS_SCHEDULER == YARNS_SCHED_ROUND_ROBIN
 
 // this scheduler keeps separate queues for each core
 // basically cycles through jobs
@@ -43,7 +43,6 @@ void scheduler_init ( unsigned long procs )
 static void insert ( unsigned long pid, unsigned long core )
 {
 	scheduler_queue_entry* newEntry;
-	bool success = 0;
 	scheduler_queue_entry* prevTail;
 	newEntry = (scheduler_queue_entry*)malloc(sizeof(scheduler_queue_entry));
 	newEntry->pid = pid;

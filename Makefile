@@ -1,5 +1,5 @@
-CC=clang
-CFLAGS=-O0 -gfull -pipe
+CC=gcc-4.2
+CFLAGS=-O0 -gfull -pipe -Wall
 #CFLAGS=-O4 -DNDEBUG -pipe
 LDFLAGS=-pipe
 

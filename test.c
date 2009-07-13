@@ -6,7 +6,7 @@ void myRoutine1 ( void* inText )
 	printf("Print: %s\n", (const char*)inText);
 }
 
-int main ()
+int main ( int argc, char** argv )
 {
 	yarn_new ( myRoutine1, (void*)"Hello, world!" );
 	yarn_new ( myRoutine1, (void*)"This is routine 2" );
