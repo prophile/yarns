@@ -69,6 +69,7 @@ static void allocate_stack ( ucontext_t* ctx )
 	ctx->uc_stack.ss_sp = page_allocate(STACK_SIZE);
 	assert(ctx->uc_stack.ss_sp);
 	ctx->uc_stack.ss_flags = 0;
+	yarn_check_stack(ctx->uc_stack.ss_sp);
 }
 
 static void deallocate_stack ( ucontext_t* ctx )
@@ -115,19 +116,18 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 	yarn* active_yarn;
 	active_yarn = (yarn*)malloc(sizeof(yarn));
 	assert(active_yarn);
-	// prepare the context
-	// insert it into the yarn list
-	list_insert(active_yarn);
 	// set up stack and such
 	allocate_stack(&(active_yarn->meta.context));
-	yarn_check_stack(active_yarn->meta.context.uc_stack.ss_sp);
-	// run getcontext & makecontext to direct it over to the bootstrap
-	//makecontext(&(active_yarn->meta.context), (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
+	// prepare the context
 	__make_trap = 0;
 	getcontext(&active_yarn->meta.context);
 	assert(__make_trap == 0);
 	__make_trap = 1;
-	makecontext(&active_yarn->meta.context, &basic_launch, 0);
+	// insert it into the yarn list
+	list_insert(active_yarn);
+	// run getcontext & makecontext to direct it over to the bootstrap
+	//makecontext(&(active_yarn->meta.context), (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
+	makecontext(&(active_yarn->meta.context), basic_launch, 0);
 	return (yarn_t)active_yarn;
 }
 
