@@ -8,14 +8,18 @@
 #include <stdio.h>
 #include "pages.h"
 #include <pthread.h>
+#if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
 
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
 
 typedef struct _yarn
 {
-	ucontext_t context;
 	yarn_t next;
 	yarn_t prev;
+	ucontext_t context;
 } yarn;
 
 static yarn* yarn_list = 0;
@@ -104,24 +108,37 @@ static void list_insert ( yarn* active_yarn )
 	yarn_list = active_yarn;
 }
 
+static void prepare_context ( yarn* active_yarn, void (*routine)(void*), void* udata )
+{
+	ucontext_t* uctx = &active_yarn->context;
+	//printf("running makecontext on ctx: %p\n", uctx);
+	//makecontext(uctx, basic_launch, 0);
+	makecontext(uctx, (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
+}
+
+static void fetch_context ( ucontext_t* uctx )
+{
+	__make_trap = 0;
+	getcontext(uctx);
+	assert(__make_trap == 0);
+	__make_trap = 1;
+}
+
 yarn_t yarn_new ( void (*routine)(void*), void* udata )
 {
 	// grab memory
 	yarn* active_yarn;
+	//prepare_context(0);
 	active_yarn = (yarn*)malloc(sizeof(yarn));
 	assert(active_yarn);
+	// prepare the context
+	fetch_context(&active_yarn->context);
 	// set up stack and such
 	allocate_stack(&(active_yarn->context));
-	// prepare the context
-	__make_trap = 0;
-	getcontext(&active_yarn->context);
-	assert(__make_trap == 0);
-	__make_trap = 1;
+	// run makecontext to direct it over to the bootstrap
+	prepare_context(active_yarn, routine, udata);
 	// insert it into the yarn list
 	list_insert(active_yarn);
-	// run getcontext & makecontext to direct it over to the bootstrap
-	//makecontext(&(active_yarn->context), (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
-	makecontext(&(active_yarn->context), basic_launch, 0);
 	return (yarn_t)active_yarn;
 }
 
@@ -180,7 +197,14 @@ static void yarn_processor ( unsigned long procID )
 #ifdef YARNS_ENABLE_SMP
 static unsigned long numprocs ()
 {
+#if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
+	unsigned long nproc = 2;
+	sysctlbyname("hw.availcpu", &nproc, NULL, NULL, 0);
+	printf("numprocs: %lu\n", nproc);
+	return nproc;
+#else
 	return 2;
+#endif
 }
 #endif
 
