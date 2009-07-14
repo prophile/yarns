@@ -17,7 +17,7 @@ struct _scheduler_queue_entry
 	scheduler_queue_entry* next;
 };
 
-struct scheduler
+struct _scheduler
 {
 	scheduler_queue_entry* head;
 	scheduler_queue_entry* tail;

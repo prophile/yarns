@@ -184,7 +184,7 @@ static void yarn_processor ( unsigned long procID )
 
 // number of parallel processing cores, for the moment assume 2
 #ifdef YARNS_ENABLE_SMP
-static int numprocs ()
+static unsigned long numprocs ()
 {
 	return 2;
 }
@@ -193,10 +193,12 @@ static int numprocs ()
 void yarn_process ()
 {
 // look through yarns
+	unsigned long nprocs;
 	yarn* active_yarn = yarn_list;
 	if (!active_yarn) return;
 #ifdef YARNS_ENABLE_SMP
-	smp_sched_init(numprocs());
+	nprocs = numprocs();
+	smp_sched_init(nprocs);
 #else
 	smp_sched_init(1);
 #endif
@@ -209,8 +211,8 @@ void yarn_process ()
 #ifdef YARNS_ENABLE_SMP
 	{
 		// create the secondary threads
-		int i, n = numprocs();
-		for (i = 1; i < n; i++)
+		int i;
+		for (i = 1; i < nprocs; i++)
 		{
 			pthread_t pt;
 			pthread_create(&pt, NULL, (void* (*)(void*))yarn_processor, (void*)i);

@@ -1,5 +1,6 @@
 #include "smp_scheduler.h"
 #include "lock.h"
+#include <stdlib.h>
 
 #ifdef YARNS_ENABLE_SMP
 
@@ -16,7 +17,7 @@ void smp_sched_init ( unsigned long procs )
 	schedulers = malloc(procs*sizeof(scheduler*));
 	for (i = 0; i < procs; i++)
 	{
-		lock_init(locks[i]);
+		lock_init(locks + i);
 		schedulers[i] = scheduler_init();
 	}
 }
@@ -33,7 +34,7 @@ static void doselect ( unsigned long core, scheduler_job* job )
 {
 	lock_lock(locks + core);
 	scheduler_select(schedulers[core], job);
-	lock_unlock(locks + target);
+	lock_unlock(locks + core);
 }
 
 void smp_sched_select ( unsigned long core, scheduler_job* job )
