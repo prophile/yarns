@@ -9,17 +9,11 @@
 #include "pages.h"
 #include <pthread.h>
 
-typedef struct _yarn_meta
-{
-	ucontext_t context;
-	//unsigned long smp_sched_data;
-} yarn_meta;
-
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
 
 typedef struct _yarn
 {
-	yarn_meta meta;
+	ucontext_t context;
 	yarn_t next;
 	yarn_t prev;
 } yarn;
@@ -117,17 +111,17 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 	active_yarn = (yarn*)malloc(sizeof(yarn));
 	assert(active_yarn);
 	// set up stack and such
-	allocate_stack(&(active_yarn->meta.context));
+	allocate_stack(&(active_yarn->context));
 	// prepare the context
 	__make_trap = 0;
-	getcontext(&active_yarn->meta.context);
+	getcontext(&active_yarn->context);
 	assert(__make_trap == 0);
 	__make_trap = 1;
 	// insert it into the yarn list
 	list_insert(active_yarn);
 	// run getcontext & makecontext to direct it over to the bootstrap
-	//makecontext(&(active_yarn->meta.context), (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
-	makecontext(&(active_yarn->meta.context), basic_launch, 0);
+	//makecontext(&(active_yarn->context), (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
+	makecontext(&(active_yarn->context), basic_launch, 0);
 	return (yarn_t)active_yarn;
 }
 
@@ -136,7 +130,7 @@ void yarn_yield ( yarn_t target )
 	// ignore target for now
 	TTD.runtime_remaining = 1;
 	// pop back over to the scheduler
-	swapcontext(&(TTD.yarn_current->meta.context), &(TTD.sched_context));
+	swapcontext(&(TTD.yarn_current->context), &(TTD.sched_context));
 }
 
 static void yarn_processor ( unsigned long procID )
@@ -162,9 +156,9 @@ static void yarn_processor ( unsigned long procID )
 		printf("job %lu @ proc %d\n", activeJob.pid, (int)procID);
 		// set all the stuff up
 		TTD.yarn_current = (yarn*)activeJob.pid;
-		TTD.yarn_current->meta.context.uc_link = &(TTD.sched_context);
+		TTD.yarn_current->context.uc_link = &(TTD.sched_context);
 		// swap contexts
-		rc = swapcontext(&(TTD.sched_context), &(TTD.yarn_current->meta.context));
+		rc = swapcontext(&(TTD.sched_context), &(TTD.yarn_current->context));
 		// check it actually worked
 		if (rc == -1)
 			perror("swapcontext failed");
@@ -175,7 +169,7 @@ static void yarn_processor ( unsigned long procID )
 		{
 			TTD.yarn_current->prev->next = TTD.yarn_current->next;
 			TTD.yarn_current->next->prev = TTD.yarn_current->prev;
-			deallocate_stack(&(TTD.yarn_current->meta.context));
+			deallocate_stack(&(TTD.yarn_current->context));
 			free(TTD.yarn_current);
 		}
 	}
