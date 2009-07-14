@@ -1,4 +1,3 @@
-#include "lock.h"
 #include "scheduler.h"
 #include "config.h"
 #include <stdio.h>
@@ -6,16 +5,8 @@
 
 #if YARNS_SCHEDULER == YARNS_SCHED_MULTILEVEL
 
-#ifdef YARNS_ENABLE_SMP
-static _Bool ismultiproc;
-static volatile lock_t schedlock;
-#endif
-
-static void panic ( const char* msg )
-{
-	printf("Panic: %s\n", msg);
-	_Exit(1);
-}
+#define TIMESLICE 10000
+#define LAYERS 20
 
 typedef struct _sched_queue_job sched_queue_job;
 
@@ -26,106 +17,94 @@ struct _sched_queue_job
 	sched_queue_job* next;
 };
 
-#define TIMESLICE 10000
-#define LAYERS 20
-
-extern void* malloc ( unsigned long bytes );
-extern void free ( void* ptr );
-
-static sched_queue_job* layer_heads[LAYERS];
-static sched_queue_job* layer_tails[LAYERS];
-
-static unsigned long skipper_index = 1;
-
-static void lock ()
+struct _scheduler
 {
-#ifdef YARNS_ENABLE_SMP
-	if (!ismultiproc)
-		return;
-	lock_lock(&schedlock);
-#endif
+	unsigned long skipper_index;
+	sched_queue_job* layer_heads[LAYERS];
+	sched_queue_job* layer_tails[LAYERS];
+};
+
+static void panic ( const char* msg )
+{
+	printf("Panic: %s\n", msg);
+	_Exit(1);
 }
 
-static void unlock ()
+scheduler* scheduler_init ()
 {
-#ifdef YARNS_ENABLE_SMP
-	if (!ismultiproc)
-		return;
-	lock_unlock(&schedlock);
-#endif
-}
-
-void scheduler_init ( unsigned long procs )
-{
+	scheduler* sched;
 	int i;
-#ifdef YARNS_ENABLE_SMP
-	ismultiproc = (procs > 1) ? 1 : 0;
-#else
-	if (procs > 1)
-		panic("no smp support in sched");
-#endif
+	sched = (scheduler*)malloc(sizeof(scheduler));
+	sched->skipper_index = 1;
 	for (i = 0; i < LAYERS; i++)
 	{
-		layer_heads[i] = 0;
-		layer_tails[i] = 0;
+		sched->layer_heads[i] = 0;
+		sched->layer_tails[i] = 0;
 	}
-#ifdef YARNS_ENABLE_SMP
-	if (ismultiproc)
-		lock_init(&schedlock);
-#endif
+	return sched;
 }
 
-static void insert ( unsigned long pid, int skip, int level )
+static void trueselect ( scheduler* sched, scheduler_job* job, int secondary );
+
+void scheduler_free ( scheduler* sched )
 {
-	if (!layer_heads[level])
+	scheduler_job j;
+	do
 	{
-		layer_heads[level] = layer_tails[level] = malloc(sizeof(sched_queue_job));
-		layer_heads[level]->pid = pid;
-		layer_heads[level]->next = 0;
-		layer_heads[level]->skipper_index = skip ? skipper_index : 0;
+		trueselect(sched, &j, 0);
+		j.runtime = SCHEDULER_UNSCHEDULE;
+	} while (j.pid != 0);
+}
+
+static void insert ( scheduler* sched, unsigned long pid, int skip, int level )
+{
+	if (!sched->layer_heads[level])
+	{
+		sched->layer_heads[level] = sched->layer_tails[level] = malloc(sizeof(sched_queue_job));
+		sched->layer_heads[level]->pid = pid;
+		sched->layer_heads[level]->next = 0;
+		sched->layer_heads[level]->skipper_index = skip ? sched->skipper_index : 0;
 	}
 	else
 	{
-		if (!layer_tails[level])
+		if (!sched->layer_tails[level])
 			panic("bad layer tail");
-		layer_tails[level]->next = malloc(sizeof(sched_queue_job));
-		layer_tails[level] = layer_tails[level]->next;
-		layer_tails[level]->pid = pid;
-		layer_tails[level]->next = 0;
-		layer_tails[level]->skipper_index = skip ? skipper_index : 0;
+		sched->layer_tails[level]->next = malloc(sizeof(sched_queue_job));
+		sched->layer_tails[level] = sched->layer_tails[level]->next;
+		sched->layer_tails[level]->pid = pid;
+		sched->layer_tails[level]->next = 0;
+		sched->layer_tails[level]->skipper_index = skip ? sched->skipper_index : 0;
 	}
 }
 
-void scheduler_insert ( unsigned long pid )
+void scheduler_insert ( scheduler* sched, unsigned long pid )
 {
-	lock();
-	insert(pid, 0, 0);
-	unlock();
+	insert(sched, pid, 0, 0);
 }
 
-static void trueselect ( scheduler_job* job, int secondary )
+static void trueselect ( scheduler* sched, scheduler_job* job, int secondary )
 {
 	int i, found = 0;
 	if (job->pid > 0)
 	{
 		if (job->runtime == 0)
 		{
-			insert(job->pid, 0, (job->data == LAYERS - 1) ? job->data : (job->data + 1));
+			insert(sched, job->pid, 0, (job->data == LAYERS - 1) ? job->data : (job->data + 1));
 		}
 		else
 		{
-			insert(job->pid, 1, job->data);
+			insert(sched, job->pid, 1, job->data);
 		}
 	}
 	for (i = 0; i < LAYERS; i++)
 	{
-		if (!layer_heads[i])
+		if (!sched->layer_heads[i])
 			continue;
-		sched_queue_job* qjob = layer_heads[i];
-		layer_heads[i] = layer_heads[i]->next;
-		if (layer_heads[i] == 0)
-			layer_tails[i] = 0;
-		if (qjob->skipper_index == skipper_index)
+		sched_queue_job* qjob = sched->layer_heads[i];
+		sched->layer_heads[i] = sched->layer_heads[i]->next;
+		if (sched->layer_heads[i] == 0)
+			sched->layer_tails[i] = 0;
+		if (qjob->skipper_index == sched->skipper_index)
 			continue;
 		job->pid = qjob->pid;
 		job->data = i;
@@ -144,17 +123,15 @@ static void trueselect ( scheduler_job* job, int secondary )
 		}
 		else
 		{
-			skipper_index++;
-			trueselect(job, 1);
+			sched->skipper_index++;
+			trueselect(sched, job, 1);
 		}
 	}
 }
 
-void scheduler_select ( scheduler_job* job )
+void scheduler_select ( scheduler* sched, scheduler_job* job )
 {
-	lock();
-	trueselect(job, 0);
-	unlock();
+	trueselect(sched, job, 0);
 }
 
 #endif

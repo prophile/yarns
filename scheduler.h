@@ -5,14 +5,16 @@ typedef struct _scheduler_job
 {
 	unsigned long pid; // 0 if no previous job, return 0 for shutdown
 	unsigned long runtime; // number of ns to run; remaining ns at end if voluntary, 0 if involuntary, SCHEDULER_UNSCHEDULE for unscheduling
-	unsigned long processor; // changes ignored, indicates number of processors
 	unsigned long data; // extra data defined by scheduler, 0 by default
 } scheduler_job;
 
+typedef struct _scheduler scheduler;
+
 #define SCHEDULER_UNSCHEDULE ~0UL
 
-void scheduler_init ( unsigned long procs ); // number of processors
-void scheduler_insert ( unsigned long pid );
-void scheduler_select ( scheduler_job* job );
+scheduler* scheduler_init ();
+void scheduler_free ( scheduler* sched );
+void scheduler_insert ( scheduler* sched, unsigned long pid );
+void scheduler_select ( scheduler* sched, scheduler_job* job );
 
 #endif

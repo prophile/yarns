@@ -1,5 +1,4 @@
 #include "scheduler.h"
-#include "lock.h"
 #include <stdbool.h>
 #include "config.h"
 #include <stdlib.h>
@@ -18,111 +17,67 @@ struct _scheduler_queue_entry
 	scheduler_queue_entry* next;
 };
 
-static unsigned long nprocs;
-static unsigned long procidx = 0;
-static lock_t* proclock;
-static scheduler_queue_entry** idxes;
+struct scheduler
+{
+	scheduler_queue_entry* head;
+	scheduler_queue_entry* tail;
+};
 
-#define HEAD(core) idxes[core]
-#define TAIL(core) idxes[nprocs+core]
 #define TIMESLICE 10000
 
-void scheduler_init ( unsigned long procs )
+scheduler* scheduler_init ()
 {
-	int i;
-	idxes = (scheduler_queue_entry**)malloc(sizeof(scheduler_queue_entry*)*procs*2);
-	proclock = malloc(sizeof(lock_t)*procs);
-	for (i = 0; i < procs; i++)
-	{
-		HEAD(i) = TAIL(i) = 0;
-		lock_init(&proclock[i]);
-	}
-	nprocs = procs;
+	scheduler* sched = (scheduler*)malloc(sizeof(scheduler));
+	sched->head = sched->tail = 0;
+	return sched;
 }
 
-static void insert ( unsigned long pid, unsigned long core )
+void scheduler_insert ( scheduler* sched, unsigned long pid )
 {
 	scheduler_queue_entry* newEntry;
 	scheduler_queue_entry* prevTail;
 	newEntry = (scheduler_queue_entry*)malloc(sizeof(scheduler_queue_entry));
 	newEntry->pid = pid;
 	newEntry->next = 0;
-	lock_lock(&proclock[core]);
-	prevTail = TAIL(core);
+	prevTail = sched->tail;
 	if (prevTail)
 	{
-		TAIL(core)->next = newEntry;
-		TAIL(core) = newEntry;
+		sched->tail->next = newEntry;
+		sched->tail = newEntry;
 	}
 	else
 	{
-		HEAD(core) = TAIL(core) = newEntry;
-	}
-	lock_unlock(&proclock[core]);
-}
-
-void scheduler_insert ( unsigned long pid )
-{
-	int i, done = 0;
-	// find an empty processor if any
-	for (i = 0; i < nprocs; i++)
-	{
-		if (!HEAD(i))
-		{
-			insert(pid, i);
-			done = 1;
-			break;
-		}
-	}
-	if (!done)
-	{
-		insert(pid, procidx);
+		sched->head = sched->tail = newEntry;
 	}
 }
 
-static unsigned long jselect ( unsigned long core )
+static unsigned long jselect ( scheduler* sched )
 {
 	unsigned long rv;
-	lock_lock(&proclock[core]);
-	if (HEAD(core))
+	if (sched->head)
 	{
-		rv = HEAD(core)->pid;
-		HEAD(core) = HEAD(core)->next;
-		if (!HEAD(core))
-			TAIL(core) = 0;
+		rv = sched->head->pid;
+		sched->head = sched->head->next;
+		if (!sched->head)
+			sched->tail = 0;
 	}
 	else
 	{
 		rv = 0;
 	}
-	lock_unlock(&proclock[core]);
 	return rv;
 }
 
-void scheduler_select ( scheduler_job* job )
+void scheduler_select ( scheduler* sched, scheduler_job* job )
 {
-	unsigned long core = job->processor, pid, idx;
+	unsigned long pid, idx;
 	if (job->pid != 0 && job->runtime != SCHEDULER_UNSCHEDULE)
 	{
-		insert(job->pid, core);
+		scheduler_insert(sched, job->pid);
 	}
-	pid = jselect(core);
-	idx = (core + 1) % nprocs;
-	if (idx == core) idx = 0;
-	if (!pid)
-	{
-		while (!pid)
-		{
-			if (idx == core)
-				break;
-			// steal from another core
-			pid = jselect(idx);
-			idx = (idx + 1) % nprocs;
-		}
-		procidx = core; // hint that this is a good core to insert new jobs
-	}
+	pid = jselect(sched);
 	job->pid = pid;
-	job->runtime = TIMESLICE;
+	job->runtime = pid == 0 ? TIMESLICE : 0;
 }
 
 #endif

@@ -2,7 +2,7 @@
 #define _XOPEN_SOURCE
 #include <ucontext.h>
 #include <stdlib.h>
-#include "scheduler.h"
+#include "smp_scheduler.h"
 #include <assert.h>
 #include "config.h"
 #include <stdio.h>
@@ -12,7 +12,7 @@
 typedef struct _yarn_meta
 {
 	ucontext_t context;
-	//unsigned long scheduler_data;
+	//unsigned long smp_sched_data;
 } yarn_meta;
 
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
@@ -155,11 +155,10 @@ static void yarn_processor ( unsigned long procID )
 #endif
 	activeJob.pid = 0;
 	activeJob.runtime = 0;
-	activeJob.processor = procID;
 	activeJob.data = 0;
 	while (!breakProcessor)
 	{
-		scheduler_select(&activeJob);
+		smp_sched_select(procID, &activeJob);
 		printf("job %lu @ proc %d\n", activeJob.pid, (int)procID);
 		// set all the stuff up
 		TTD.yarn_current = (yarn*)activeJob.pid;
@@ -197,14 +196,14 @@ void yarn_process ()
 	yarn* active_yarn = yarn_list;
 	if (!active_yarn) return;
 #ifdef YARNS_ENABLE_SMP
-	scheduler_init(numprocs());
+	smp_sched_init(numprocs());
 #else
-	scheduler_init(1);
+	smp_sched_init(1);
 #endif
 	// set up all the yarns in the scheduler
 	do
 	{
-		scheduler_insert((unsigned long)active_yarn);
+		smp_sched_insert((unsigned long)active_yarn);
 		active_yarn = active_yarn->next;
 	} while (active_yarn && active_yarn != yarn_list);
 #ifdef YARNS_ENABLE_SMP
