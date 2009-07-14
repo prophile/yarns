@@ -32,10 +32,24 @@ typedef struct _yarn_thread_data
 #ifdef YARNS_ENABLE_SMP
 pthread_key_t _ttd;
 #define TTD (*(yarn_thread_data*)(pthread_getspecific(_ttd)))
-#define TTDINIT() { int rc; yarn_thread_data* ttd = (yarn_thread_data*)malloc(sizeof(yarn_thread_data)); ttd->yarn_current = NULL; ttd->runtime_remaining = 0; rc = pthread_key_create(&_ttd, 0); assert(rc == 0); }
+static void TTDINIT_MAIN ()
+{
+	int rc;
+	rc = pthread_key_create(&_ttd, 0);
+	assert(rc == 0);
+}
+
+static void TTDINIT()
+{
+	yarn_thread_data* ttd = (yarn_thread_data*)malloc(sizeof(yarn_thread_data));
+	ttd->yarn_current = NULL;
+	ttd->runtime_remaining = 0;
+	pthread_setspecific(_ttd, ttd);
+}
 #else
 static yarn_thread_data _ttd;
 #define TTD _ttd
+#define TTDINIT_MAIN() {}
 #define TTDINIT() { _ttd.yarn_current = 0; _ttd.runtime_remaining = 0; }
 #endif
 
@@ -220,6 +234,7 @@ void yarn_process ()
 #else
 	smp_sched_init(1);
 #endif
+	TTDINIT_MAIN();
 	// set up all the yarns in the scheduler
 	do
 	{
