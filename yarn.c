@@ -21,8 +21,6 @@ typedef struct _yarn yarn;
 
 struct _yarn
 {
-	yarn* next;
-	yarn* prev;
 	ucontext_t context;
 };
 
@@ -206,8 +204,6 @@ static void yarn_processor ( unsigned long procID )
 		// if we're unscheduling, free up memory
 		if (TTD.runtime_remaining == SCHEDULER_UNSCHEDULE)
 		{
-			TTD.yarn_current->prev->next = TTD.yarn_current->next;
-			TTD.yarn_current->next->prev = TTD.yarn_current->prev;
 			deallocate_stack(&(TTD.yarn_current->context));
 			free(TTD.yarn_current);
 		}
