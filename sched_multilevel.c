@@ -24,7 +24,7 @@ struct _scheduler
 	sched_queue_job* layer_tails[LAYERS];
 };
 
-static void panic ( const char* msg )
+static void argh ( const char* msg )
 {
 	printf("Panic: %s\n", msg);
 	_Exit(1);
@@ -68,7 +68,7 @@ static void insert ( scheduler* sched, unsigned long pid, int skip, int level )
 	else
 	{
 		if (!sched->layer_tails[level])
-			panic("bad layer tail");
+			argh("bad layer tail");
 		sched->layer_tails[level]->next = malloc(sizeof(sched_queue_job));
 		sched->layer_tails[level] = sched->layer_tails[level]->next;
 		sched->layer_tails[level]->pid = pid;

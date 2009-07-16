@@ -176,6 +176,7 @@ static void yarn_processor ( unsigned long procID )
 #ifdef BASE_CONTEXT_NEEDS_STACK
 	allocate_stack(&(TTD.sched_context));
 #endif
+	TTD.sched_context.uc_link = 0;
 	activeJob.pid = 0;
 	activeJob.runtime = 0;
 	activeJob.data = 0;

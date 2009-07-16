@@ -4,7 +4,7 @@
 #include "config.h"
 
 #if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
-//#define USE_MACH_VM
+#define USE_MACH_VM
 #endif
 
 #ifdef USE_MACH_VM
