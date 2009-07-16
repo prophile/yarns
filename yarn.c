@@ -212,8 +212,9 @@ static void yarn_processor ( unsigned long procID )
 static unsigned long numprocs ()
 {
 #if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
-	unsigned long nproc = 2;
-	sysctlbyname("hw.availcpu", &nproc, NULL, NULL, 0);
+	unsigned long nproc = 4;
+	size_t oldLen = sizeof(nproc);
+	sysctlbyname("hw.availcpu", &nproc, &oldLen, NULL, 0);
 	printf("numprocs: %lu\n", nproc);
 	return nproc;
 #else
