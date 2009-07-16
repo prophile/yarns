@@ -11,9 +11,83 @@ struct _bigalloc_book
 	bigalloc_book* next;
 };
 
+#define LITTLE_PAGES_COUNT 2
+#define LITTLE_PAGES_SIZE (4096*LITTLE_PAGES_COUNT)
+
+typedef struct _little_page_info little_page_info;
+
+struct _little_page_info
+{
+	unsigned long nalloc;
+	unsigned long remainingLen;
+	unsigned char* nextbase;
+};
+
+typedef struct _little_block_info little_block_info;
+
+struct _little_block_info
+{
+	unsigned long len;
+};
+
 #define BIG_BOOK_HASH_SIZE 256
 
 static bigalloc_book books[BIG_BOOK_HASH_SIZE];
+static unsigned char* little_page_active = NULL;
+
+static void little_page_allocate ()
+{
+	little_page_info* lpi;
+	little_page_active = page_allocate(LITTLE_PAGES_SIZE);
+	lpi = (little_page_info*)little_page_active;
+	lpi->nalloc = 0;
+	lpi->nextbase = little_page_active + sizeof(little_page_info);
+	lpi->remainingLen = LITTLE_PAGES_SIZE - sizeof(little_page_info);
+}
+
+static little_page_info* get_little_page ()
+{
+	little_page_info* lpi;
+	if (!little_page_active)
+	{
+		little_page_allocate();
+	}
+	lpi = (little_page_info*)little_page_active;
+	if (lpi->nextbase == 0)
+	{
+		little_page_allocate();
+		lpi = (little_page_info*)little_page_active;
+	}
+	return lpi;
+}
+
+static void* little_alloc ( unsigned long len )
+{
+	unsigned char* ptr;
+	little_page_info* lpi = get_little_page();
+	if (lpi->remainingLen < len)
+	{
+		little_page_allocate();
+		lpi = get_little_page();
+	}
+	ptr = lpi->nextbase;
+	lpi->remainingLen -= len;
+	lpi->nextbase += len;
+	lpi->nalloc++;
+	return ptr;
+}
+
+static void little_free ( void* ptr )
+{
+	little_page_info* lpi;
+	unsigned long lptr = (unsigned long)ptr;
+	lptr -= (lptr % LITTLE_PAGES_SIZE);
+	lpi = (little_page_info*)lptr;
+	if (--lpi->nalloc == 0)
+	{
+		page_deallocate(ptr, LITTLE_PAGES_SIZE);
+	}
+}
 
 void yallocinit ()
 {
@@ -94,7 +168,7 @@ void* yalloc ( unsigned long len )
 	else
 	{
 		// for now
-		return malloc(len);
+		return little_alloc(len);
 	}
 }
 
@@ -104,7 +178,7 @@ void yfree ( void* ptr )
 	if (lptr & 4095)
 	{
 		// small granularity
-		free(ptr); // for now
+		little_free(ptr); // for now
 	}
 	else
 	{
