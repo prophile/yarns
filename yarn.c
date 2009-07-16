@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
+#include <unistd.h>
 
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
 
@@ -167,6 +168,7 @@ static void yarn_processor ( unsigned long procID )
 	// this is the main routine run by each thread
 	volatile int breakProcessor = 0;
 	int rc;
+	unsigned deadSleepTime = YARNS_DEAD_SLEEP_TIME;
 	// init the thread yarn data
 	TTDINIT();
 	// make sure it initted properly
@@ -183,6 +185,12 @@ static void yarn_processor ( unsigned long procID )
 	while (!breakProcessor)
 	{
 		smp_sched_select(procID, &activeJob);
+		if (activeJob.pid == 0)
+		{
+			usleep(deadSleepTime);
+			deadSleepTime *= 2;
+			continue;
+		}
 		printf("job %lu @ proc %d\n", activeJob.pid, (int)procID);
 		assert(activeJob.pid < maxpid);
 		assert(process_table[activeJob.pid]);
@@ -203,6 +211,7 @@ static void yarn_processor ( unsigned long procID )
 			deallocate_stack(&(TTD.yarn_current->context));
 			free(TTD.yarn_current);
 		}
+		deadSleepTime = YARNS_DEAD_SLEEP_TIME;
 	}
 	deallocate_stack(&(TTD.sched_context));
 }

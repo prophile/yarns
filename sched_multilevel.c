@@ -5,7 +5,6 @@
 
 #if YARNS_SCHEDULER == YARNS_SCHED_MULTILEVEL
 
-#define TIMESLICE 10000
 #define LAYERS 20
 
 typedef struct _sched_queue_job sched_queue_job;
@@ -41,6 +40,7 @@ scheduler* scheduler_init ()
 		sched->layer_heads[i] = 0;
 		sched->layer_tails[i] = 0;
 	}
+	printf("Initted multilayer scheduler.\n");
 	return sched;
 }
 
@@ -108,7 +108,7 @@ static void trueselect ( scheduler* sched, scheduler_job* job, int secondary )
 			continue;
 		job->pid = qjob->pid;
 		job->data = i;
-		job->runtime = TIMESLICE;
+		job->runtime = YARNS_TIMESLICE;
 		free(qjob);
 		found = 1;
 		break;

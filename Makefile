@@ -3,7 +3,7 @@ CFLAGS=-O0 -gfull -pipe -Wall
 #CFLAGS=-O4 -DNDEBUG -pipe
 LDFLAGS=-pipe
 
-test: test.o pages.o sched_multilevel.o sched_roundrobin.o yarn.o smp_scheduler.o
+test: test.o pages.o sched_multilevel.o sched_roundrobin.o yarn.o smp_scheduler.o sched_random.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 test.o: test.c config.h yarn.h yarns.h
@@ -16,6 +16,9 @@ sched_multilevel.o: sched_multilevel.c config.h scheduler.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 sched_roundrobin.o: sched_roundrobin.c config.h scheduler.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+sched_random.o: sched_random.c config.h scheduler.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 yarn.o: yarn.c yarn.h scheduler.h pages.h lock.h config.h

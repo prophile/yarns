@@ -1,6 +1,7 @@
 #include "scheduler.h"
 #include <stdbool.h>
 #include "config.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 #if YARNS_SCHEDULER == YARNS_SCHED_ROUND_ROBIN
@@ -23,12 +24,11 @@ struct _scheduler
 	scheduler_queue_entry* tail;
 };
 
-#define TIMESLICE 10000
-
 scheduler* scheduler_init ()
 {
 	scheduler* sched = (scheduler*)malloc(sizeof(scheduler));
 	sched->head = sched->tail = 0;
+	printf("Initted round robin scheduler.\n");
 	return sched;
 }
 
@@ -77,7 +77,7 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 	}
 	pid = jselect(sched);
 	job->pid = pid;
-	job->runtime = pid == 0 ? TIMESLICE : 0;
+	job->runtime = pid == 0 ? YARNS_TIMESLICE : 0;
 }
 
 #endif
