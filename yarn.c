@@ -7,6 +7,7 @@
 #include "config.h"
 #include <stdio.h>
 #include "pages.h"
+#include <signal.h>
 #include <pthread.h>
 #if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
 #include <sys/types.h>
@@ -73,6 +74,7 @@ static void yarn_launcher ( yarn* active_yarn, void (*routine)(void*), void* uda
 	// basically a bootstrap routine for each yarn which runs the routine then cleans up
 	routine(udata);
 	TTD.runtime_remaining = SCHEDULER_UNSCHEDULE;
+	setcontext(&(TTD.sched_context));
 }
 
 static void allocate_stack ( ucontext_t* ctx )
@@ -125,16 +127,23 @@ static void list_insert ( yarn* active_yarn )
 static void prepare_context ( yarn* active_yarn, void (*routine)(void*), void* udata )
 {
 	ucontext_t* uctx = &active_yarn->context;
-	//printf("running makecontext on ctx: %p\n", uctx);
+	uctx->uc_link = 0;
+	printf("running makecontext on ctx: %p\n", uctx);
 	//makecontext(uctx, basic_launch, 0);
 	makecontext(uctx, (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
+}
+
+static void make_trap_abort ()
+{
+	raise(SIGABRT);
 }
 
 static void fetch_context ( ucontext_t* uctx )
 {
 	__make_trap = 0;
 	getcontext(uctx);
-	assert(__make_trap == 0);
+	if (__make_trap != 0)
+		make_trap_abort ();
 	__make_trap = 1;
 }
 
@@ -187,7 +196,6 @@ static void yarn_processor ( unsigned long procID )
 		printf("job %lu @ proc %d\n", activeJob.pid, (int)procID);
 		// set all the stuff up
 		TTD.yarn_current = (yarn*)activeJob.pid;
-		TTD.yarn_current->context.uc_link = &(TTD.sched_context);
 		// swap contexts
 		rc = swapcontext(&(TTD.sched_context), &(TTD.yarn_current->context));
 		// check it actually worked
@@ -214,9 +222,18 @@ static unsigned long numprocs ()
 #if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
 	unsigned long nproc = 4;
 	size_t oldLen = sizeof(nproc);
-	sysctlbyname("hw.availcpu", &nproc, &oldLen, NULL, 0);
-	printf("numprocs: %lu\n", nproc);
-	return nproc;
+	int namevec[2] = { CTL_HW, HW_NCPU };
+	int rc = sysctl(namevec, 2, &nproc, &oldLen, NULL, 0);
+	if (rc)
+	{
+		perror("sysctl failed, assuming 2 procs");
+		return 2;
+	}
+	else
+	{
+		printf("numprocs: %lu\n", nproc);
+		return nproc;
+	}
 #else
 	return 2;
 #endif
