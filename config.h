@@ -2,7 +2,7 @@
 #define __YARNS_CONFIG__
 
 #define YARNS_STACK_PAGES 4
-//#define YARNS_ENABLE_SMP
+#define YARNS_ENABLE_SMP
 
 // schedulers
 #define YARNS_SCHED_MULTILEVEL 1
@@ -13,5 +13,8 @@
 #define YARNS_TARGET_MACH 1
 #define YARNS_TARGET_LINUX 2
 #define YARNS_SELECTED_TARGET YARNS_TARGET_MACH
+
+// maxima
+#define YARNS_MAX_PROCESSES 65536
 
 #endif

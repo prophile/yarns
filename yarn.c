@@ -16,14 +16,18 @@
 
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
 
-typedef struct _yarn
-{
-	yarn_t next;
-	yarn_t prev;
-	ucontext_t context;
-} yarn;
+typedef struct _yarn yarn;
 
-static yarn* yarn_list = 0;
+struct _yarn
+{
+	yarn* next;
+	yarn* prev;
+	ucontext_t context;
+};
+
+static yarn* process_table[YARNS_MAX_PROCESSES] = { 0 };
+static int maxpid = 1;
+
 typedef struct _yarn_thread_data
 {
 	ucontext_t sched_context;
@@ -99,29 +103,13 @@ static void basic_launch ()
 
 int __make_trap = 1; // this traps the odd situation where makecontext doesn't work and we get random code jumping in here
 
-static void list_insert ( yarn* active_yarn )
+static yarn_t list_insert ( yarn* active_yarn )
 {
-	if (yarn_list)
-	{
-		if (yarn_list->prev)
-		{
-			active_yarn->prev = yarn_list->prev;
-			active_yarn->next = yarn_list;
-			active_yarn->prev->next = active_yarn;
-			yarn_list->prev = active_yarn;
-		}
-		else
-		{
-			yarn_list->prev = yarn_list->next = active_yarn;
-			active_yarn->prev = active_yarn->next = yarn_list;
-		}
-	}
-	else
-	{
-		active_yarn->next = 0;
-		active_yarn->prev = 0;
-	}
-	yarn_list = active_yarn;
+	yarn_t pid = maxpid++;
+	printf("pid(%d)=yarn(%p)\n", pid, active_yarn);
+	assert(maxpid < YARNS_MAX_PROCESSES);
+	process_table[pid] = active_yarn;
+	return pid;
 }
 
 static void prepare_context ( yarn* active_yarn, void (*routine)(void*), void* udata )
@@ -151,6 +139,7 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 {
 	// grab memory
 	yarn* active_yarn;
+	yarn_t pid;
 	//prepare_context(0);
 	active_yarn = (yarn*)malloc(sizeof(yarn));
 	assert(active_yarn);
@@ -161,8 +150,8 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 	// run makecontext to direct it over to the bootstrap
 	prepare_context(active_yarn, routine, udata);
 	// insert it into the yarn list
-	list_insert(active_yarn);
-	return (yarn_t)active_yarn;
+	pid = list_insert(active_yarn);
+	return pid;
 }
 
 void yarn_yield ( yarn_t target )
@@ -194,8 +183,10 @@ static void yarn_processor ( unsigned long procID )
 	{
 		smp_sched_select(procID, &activeJob);
 		printf("job %lu @ proc %d\n", activeJob.pid, (int)procID);
+		assert(activeJob.pid < maxpid);
+		assert(process_table[activeJob.pid]);
 		// set all the stuff up
-		TTD.yarn_current = (yarn*)activeJob.pid;
+		TTD.yarn_current = process_table[activeJob.pid];
 		// swap contexts
 		rc = swapcontext(&(TTD.sched_context), &(TTD.yarn_current->context));
 		// check it actually worked
@@ -244,8 +235,7 @@ void yarn_process ()
 {
 // look through yarns
 	unsigned long nprocs;
-	yarn* active_yarn = yarn_list;
-	if (!active_yarn) return;
+	int i;
 #ifdef YARNS_ENABLE_SMP
 	nprocs = numprocs();
 	smp_sched_init(nprocs);
@@ -254,20 +244,16 @@ void yarn_process ()
 #endif
 	TTDINIT_MAIN();
 	// set up all the yarns in the scheduler
-	do
+	for (i = 1; i < maxpid; i++)
 	{
-		smp_sched_insert((unsigned long)active_yarn);
-		active_yarn = active_yarn->next;
-	} while (active_yarn && active_yarn != yarn_list);
+		smp_sched_insert(i);
+	}
 #ifdef YARNS_ENABLE_SMP
-	{
 		// create the secondary threads
-		int i;
-		for (i = 1; i < nprocs; i++)
-		{
-			pthread_t pt;
-			pthread_create(&pt, NULL, (void* (*)(void*))yarn_processor, (void*)i);
-		}
+	for (i = 1; i < nprocs; i++)
+	{
+		pthread_t pt;
+		pthread_create(&pt, NULL, (void* (*)(void*))yarn_processor, (void*)i);
 	}
 #endif
 	// run the primary thread
