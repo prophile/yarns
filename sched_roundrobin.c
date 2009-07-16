@@ -3,6 +3,7 @@
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "alloc.h"
 
 #if YARNS_SCHEDULER == YARNS_SCHED_ROUND_ROBIN
 
@@ -26,7 +27,7 @@ struct _scheduler
 
 scheduler* scheduler_init ()
 {
-	scheduler* sched = (scheduler*)malloc(sizeof(scheduler));
+	scheduler* sched = (scheduler*)yalloc(sizeof(scheduler));
 	sched->head = sched->tail = 0;
 	printf("Initted round robin scheduler.\n");
 	return sched;
@@ -36,7 +37,7 @@ void scheduler_insert ( scheduler* sched, unsigned long pid )
 {
 	scheduler_queue_entry* newEntry;
 	scheduler_queue_entry* prevTail;
-	newEntry = (scheduler_queue_entry*)malloc(sizeof(scheduler_queue_entry));
+	newEntry = (scheduler_queue_entry*)yalloc(sizeof(scheduler_queue_entry));
 	newEntry->pid = pid;
 	newEntry->next = 0;
 	prevTail = sched->tail;

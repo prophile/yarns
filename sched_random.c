@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <time.h>
+#include "alloc.h"
 
 #if YARNS_SCHEDULER == YARNS_SCHED_RANDOM
 
@@ -43,18 +44,18 @@ struct _scheduler
 
 scheduler* scheduler_init ()
 {
-	scheduler* sched = malloc(sizeof(scheduler));
-	sched->baselist = malloc(sizeof(scheduler_joblist));
+	scheduler* sched = yalloc(sizeof(scheduler));
+	sched->baselist = yalloc(sizeof(scheduler_joblist));
 	sched->baselist->n = 0;
 	printf("Initted random scheduler\n");
 	compar_xor = time(NULL);
 	return sched;
 }
 
-void scheduler_free ( scheduler* sched )
+void scheduler_yfree ( scheduler* sched )
 {
-	free(sched->baselist);
-	free(sched);
+	yfree(sched->baselist);
+	yfree(sched);
 }
 
 void scheduler_insert ( scheduler* sched, unsigned long pid )

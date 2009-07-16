@@ -14,6 +14,7 @@
 #include <sys/sysctl.h>
 #endif
 #include <unistd.h>
+#include "alloc.h"
 
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
 
@@ -45,7 +46,7 @@ static void TTDINIT_MAIN ()
 
 static void TTDINIT()
 {
-	yarn_thread_data* ttd = (yarn_thread_data*)malloc(sizeof(yarn_thread_data));
+	yarn_thread_data* ttd = (yarn_thread_data*)yalloc(sizeof(yarn_thread_data));
 	ttd->yarn_current = NULL;
 	ttd->runtime_remaining = 0;
 	pthread_setspecific(_ttd, ttd);
@@ -140,7 +141,7 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 	yarn* active_yarn;
 	yarn_t pid;
 	//prepare_context(0);
-	active_yarn = (yarn*)malloc(sizeof(yarn));
+	active_yarn = (yarn*)yalloc(sizeof(yarn));
 	assert(active_yarn);
 	// prepare the context
 	fetch_context(&active_yarn->context);
@@ -201,11 +202,11 @@ static void yarn_processor ( unsigned long procID )
 			perror("swapcontext failed");
 		// set the runtime
 		activeJob.runtime = TTD.runtime_remaining;
-		// if we're unscheduling, free up memory
+		// if we're unscheduling, yfree up memory
 		if (TTD.runtime_remaining == SCHEDULER_UNSCHEDULE)
 		{
 			deallocate_stack(&(TTD.yarn_current->context));
-			free(TTD.yarn_current);
+			yfree(TTD.yarn_current);
 		}
 		deadSleepTime = YARNS_DEAD_SLEEP_TIME;
 	}

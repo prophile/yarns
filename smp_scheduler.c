@@ -2,6 +2,7 @@
 #include "lock.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "alloc.h"
 
 #ifdef YARNS_ENABLE_SMP
 
@@ -25,8 +26,8 @@ void smp_sched_init ( unsigned long procs )
 	int i;
 	DBG("smp_sched_init with procs=%lu\n", procs);
 	nprocs = procs;
-	locks = malloc(procs*sizeof(lock_t));
-	schedulers = malloc(procs*sizeof(scheduler*));
+	locks = yalloc(procs*sizeof(lock_t));
+	schedulers = yalloc(procs*sizeof(scheduler*));
 	for (i = 0; i < procs; i++)
 	{
 		DBG("setting up scheduler for proc %lu\n", i);

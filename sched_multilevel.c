@@ -2,6 +2,7 @@
 #include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include "alloc.h"
 
 #if YARNS_SCHEDULER == YARNS_SCHED_MULTILEVEL
 
@@ -33,7 +34,7 @@ scheduler* scheduler_init ()
 {
 	scheduler* sched;
 	int i;
-	sched = (scheduler*)malloc(sizeof(scheduler));
+	sched = (scheduler*)yalloc(sizeof(scheduler));
 	sched->skipper_index = 1;
 	for (i = 0; i < LAYERS; i++)
 	{
@@ -46,7 +47,7 @@ scheduler* scheduler_init ()
 
 static void trueselect ( scheduler* sched, scheduler_job* job, int secondary );
 
-void scheduler_free ( scheduler* sched )
+void scheduler_yfree ( scheduler* sched )
 {
 	scheduler_job j;
 	do
@@ -60,7 +61,7 @@ static void insert ( scheduler* sched, unsigned long pid, int skip, int level )
 {
 	if (!sched->layer_heads[level])
 	{
-		sched->layer_heads[level] = sched->layer_tails[level] = malloc(sizeof(sched_queue_job));
+		sched->layer_heads[level] = sched->layer_tails[level] = yalloc(sizeof(sched_queue_job));
 		sched->layer_heads[level]->pid = pid;
 		sched->layer_heads[level]->next = 0;
 		sched->layer_heads[level]->skipper_index = skip ? sched->skipper_index : 0;
@@ -69,7 +70,7 @@ static void insert ( scheduler* sched, unsigned long pid, int skip, int level )
 	{
 		if (!sched->layer_tails[level])
 			argh("bad layer tail");
-		sched->layer_tails[level]->next = malloc(sizeof(sched_queue_job));
+		sched->layer_tails[level]->next = yalloc(sizeof(sched_queue_job));
 		sched->layer_tails[level] = sched->layer_tails[level]->next;
 		sched->layer_tails[level]->pid = pid;
 		sched->layer_tails[level]->next = 0;
@@ -109,7 +110,7 @@ static void trueselect ( scheduler* sched, scheduler_job* job, int secondary )
 		job->pid = qjob->pid;
 		job->data = i;
 		job->runtime = YARNS_TIMESLICE;
-		free(qjob);
+		yfree(qjob);
 		found = 1;
 		break;
 	}
