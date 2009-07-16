@@ -1,10 +1,14 @@
 CC=clang
-CFLAGS=-O0 -gfull -pipe -Wall
-#CFLAGS=-O4 -DNDEBUG -pipe
-LDFLAGS=-pipe
+ARCH=i386
+#CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH)
+CFLAGS=-O4 -DNDEBUG -pipe -arch $(ARCH)
+LDFLAGS=-L. -arch $(ARCH)
 
-test: test.o pages.o sched_multilevel.o sched_roundrobin.o yarn.o smp_scheduler.o sched_random.o alloc.o
-	$(CC) $(LDFLAGS) -o $@ $^
+test: test.o libyarns.dylib
+	$(CC) $(LDFLAGS) -lyarns -o $@ $<
+	
+libyarns.dylib: pages.o sched_multilevel.o sched_roundrobin.o yarn.o smp_scheduler.o sched_random.o alloc.o
+	$(LD) -lc -dylib -exported_symbols_list exports.txt $(LDFLAGS) -o $@ $^ /usr/lib/dylib1.o
 
 test.o: test.c config.h yarn.h yarns.h
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -31,4 +35,4 @@ alloc.o: alloc.c alloc.h pages.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o test
+	rm -f *.o test libyarns.dylib
