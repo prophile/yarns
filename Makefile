@@ -1,7 +1,7 @@
 CC=clang
 ARCH=i386
-#CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH)
-CFLAGS=-O4 -DNDEBUG -pipe -arch $(ARCH)
+CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH)
+#CFLAGS=-O4 -DNDEBUG -pipe -arch $(ARCH)
 LDFLAGS=-L. -arch $(ARCH)
 
 test: test.o libyarns.dylib
