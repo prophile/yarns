@@ -6,8 +6,11 @@
 #include <stdio.h>
 #include <time.h>
 #include "alloc.h"
+#include "debug.h"
 
 #if YARNS_SCHEDULER == YARNS_SCHED_RANDOM
+
+#define DEBUG_MODULE DEBUG_SCHEDULER
 
 #define JOBLIST_LEN (1024*16)-1
 
@@ -47,7 +50,7 @@ scheduler* scheduler_init ()
 	scheduler* sched = yalloc(sizeof(scheduler));
 	sched->baselist = yalloc(sizeof(scheduler_joblist));
 	sched->baselist->n = 0;
-	printf("Initted random scheduler\n");
+	DEBUG("Initted random scheduler\n");
 	compar_xor = time(NULL);
 	return sched;
 }

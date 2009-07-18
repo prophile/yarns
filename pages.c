@@ -2,6 +2,9 @@
 #include <assert.h>
 #include <stdio.h>
 #include "config.h"
+#include "debug.h"
+
+#define DEBUG_MODULE DEBUG_PAGE_ALLOCATOR
 
 #if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
 #define USE_MACH_VM
@@ -14,7 +17,7 @@ void* page_allocate ( unsigned long bytes )
 {
 	kern_return_t rt;
 	void* pointer = 0;
-	//printf("Allocating %d bytes = %d pages\n", bytes, bytes / 4096);
+	//DEBUG("Allocating %d bytes = %d pages\n", bytes, bytes / 4096);
 	assert(!(bytes % 4096));
 	rt = vm_allocate(mach_task_self(), (vm_address_t*)&pointer, bytes, 1);
 	return pointer;

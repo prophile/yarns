@@ -4,8 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "alloc.h"
+#include "debug.h"
 
 #if YARNS_SCHEDULER == YARNS_SCHED_ROUND_ROBIN
+
+#define DEBUG_MODULE DEBUG_SCHEDULER
 
 // this scheduler keeps separate queues for each core
 // basically cycles through jobs
@@ -29,7 +32,7 @@ scheduler* scheduler_init ()
 {
 	scheduler* sched = (scheduler*)yalloc(sizeof(scheduler));
 	sched->head = sched->tail = 0;
-	printf("Initted round robin scheduler.\n");
+	DEBUG("Initted round robin scheduler.\n");
 	return sched;
 }
 

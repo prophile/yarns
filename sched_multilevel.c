@@ -6,6 +6,8 @@
 
 #if YARNS_SCHEDULER == YARNS_SCHED_MULTILEVEL
 
+#define DEBUG_MODULE DEBUG_SCHEDULER
+
 #define LAYERS 20
 
 typedef struct _sched_queue_job sched_queue_job;
@@ -26,7 +28,7 @@ struct _scheduler
 
 static void argh ( const char* msg )
 {
-	printf("Panic: %s\n", msg);
+	fprintf(stderr, "Panic: %s\n", msg);
 	_Exit(1);
 }
 
@@ -41,7 +43,7 @@ scheduler* scheduler_init ()
 		sched->layer_heads[i] = 0;
 		sched->layer_tails[i] = 0;
 	}
-	printf("Initted multilayer scheduler.\n");
+	DEBUG("Initted multilayer scheduler.\n");
 	return sched;
 }
 

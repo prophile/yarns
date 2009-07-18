@@ -15,6 +15,9 @@
 #endif
 #include <unistd.h>
 #include "alloc.h"
+#include "debug.h"
+
+#define DEBUG_MODULE DEBUG_YARNS
 
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
 
@@ -68,7 +71,7 @@ static void yarn_check_stack ( const void* base )
 	unsigned long ul = (unsigned long)base;
 	if (ul & 4095 || !ul)
 	{
-		printf("ul&4095=%d\n", (int)(ul % 4096));
+		DEBUG("ul&4095=%d\n", (int)(ul % 4096));
 		assert(0);
 	}
 }
@@ -106,7 +109,7 @@ int __make_trap = 1; // this traps the odd situation where makecontext doesn't w
 static yarn_t list_insert ( yarn* active_yarn )
 {
 	yarn_t pid = maxpid++;
-	printf("pid(%d)=yarn(%p)\n", pid, active_yarn);
+	DEBUG("pid(%d)=yarn(%p)\n", pid, active_yarn);
 	assert(maxpid < YARNS_MAX_PROCESSES);
 	process_table[pid] = active_yarn;
 	return pid;
@@ -116,7 +119,7 @@ static void prepare_context ( yarn* active_yarn, void (*routine)(void*), void* u
 {
 	ucontext_t* uctx = &active_yarn->context;
 	uctx->uc_link = 0;
-	printf("running makecontext on ctx: %p\n", uctx);
+	DEBUG("running makecontext on ctx: %p\n", uctx);
 	//makecontext(uctx, basic_launch, 0);
 	makecontext(uctx, (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
 }
@@ -190,7 +193,7 @@ static void yarn_processor ( unsigned long procID )
 			deadSleepTime *= 2;
 			continue;
 		}
-		printf("job %lu @ proc %d\n", activeJob.pid, (int)procID);
+		DEBUG("job %lu @ proc %d\n", activeJob.pid, (int)procID);
 		assert(activeJob.pid < maxpid);
 		assert(process_table[activeJob.pid]);
 		// set all the stuff up
@@ -229,7 +232,7 @@ static unsigned long numprocs ()
 	}
 	else
 	{
-		printf("numprocs: %lu\n", nproc);
+		DEBUG("numprocs: %lu\n", nproc);
 		return nproc;
 	}
 #else

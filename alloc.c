@@ -1,6 +1,9 @@
 #include "alloc.h"
 #include "pages.h"
 #include <stdlib.h>
+#include "debug.h"
+
+#define DEBUG_MODULE DEBUG_ALLOCATOR
 
 typedef struct _bigalloc_book bigalloc_book;
 
@@ -43,6 +46,7 @@ static void little_page_allocate ()
 	lpi->nalloc = 0;
 	lpi->nextbase = little_page_active + sizeof(little_page_info);
 	lpi->remainingLen = LITTLE_PAGES_SIZE - sizeof(little_page_info);
+	DEBUG("little allocator claimed %d new pages\n", LITTLE_PAGES_COUNT);
 }
 
 static little_page_info* get_little_page ()
@@ -85,6 +89,7 @@ static void little_free ( void* ptr )
 	lpi = (little_page_info*)lptr;
 	if (--lpi->nalloc == 0)
 	{
+		DEBUG("little allocator freed %d pages\n", LITTLE_PAGES_COUNT);
 		page_deallocate(ptr, LITTLE_PAGES_SIZE);
 	}
 }
@@ -164,11 +169,14 @@ void* yalloc ( unsigned long len )
 		ptr = page_allocate(len);
 		lptr = (unsigned long)ptr;
 		bigbook_insert(lptr, len);
+		DEBUG("big allocator claimed %d pages\n", len/4096);
+		return ptr;
 	}
 	else
 	{
 		// for now
-		return little_alloc(len);
+		ptr = little_alloc(len);
+		return ptr;
 	}
 }
 
@@ -185,5 +193,6 @@ void yfree ( void* ptr )
 		// big granularity
 		unsigned long len = bigbook_eatlen(lptr);
 		page_deallocate(ptr, len);
+		DEBUG("big allocator released %d pages\n", len/4096);
 	}
 }
