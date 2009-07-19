@@ -5,50 +5,26 @@
 #include <time.h>
 #include "alloc.h"
 
-void myRoutine1 ( void* inText )
+static void myRoutine1 ( void* param )
 {
-	printf("Print: %s\n", (const char*)inText);
+	printf("This is routine: %lu\n", (unsigned long)param);
 }
 
-static void test_allocator ( unsigned long len )
+static void yarnify ( unsigned long n )
 {
-	void* ptr = yalloc(len);
-	memset(ptr, 0, len);
-	yfree(ptr);
-}
-
-static void stress_test_big_allocator ()
-{
-	unsigned long i, ntests = 10000;
-	printf("Stress testing big allocator.\n");
-	for (i = 0; i < ntests; i++)
-	{
-		unsigned long len = 2048 + (rand() % 30000);
-		test_allocator(len);
-	}
-	printf("Done!\n");
-}
-
-static void stress_test_little_allocator ()
-{
-	unsigned long i, ntests = 10000;
-	printf("Stress testing little allocator.\n");
-	for (i = 0; i < ntests; i++)
-	{
-		unsigned long len = (rand() % 2048);
-		test_allocator(len);
-	}
-	printf("Done!\n");
+	yarn_new ( myRoutine1, (void*)n );
 }
 
 int main ( int argc, char** argv )
 {
+	int i;
 	srand(time(NULL));
 	yallocinit();
 	//stress_test_big_allocator();
-	yarn_new ( myRoutine1, (void*)"Hello, world!" );
-	yarn_new ( myRoutine1, (void*)"This is routine 2" );
-	yarn_new ( myRoutine1, (void*)"This is routine 3" );
+	for (i = 0; i < 10000; i++)
+	{
+		yarnify(i);
+	}
 	yarn_process ();
 	
 	return 0;

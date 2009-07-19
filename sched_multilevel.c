@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "alloc.h"
+#include "debug.h"
 
 #if YARNS_SCHEDULER == YARNS_SCHED_MULTILEVEL
 
@@ -94,7 +95,7 @@ static void trueselect ( scheduler* sched, scheduler_job* job, int secondary )
 		{
 			insert(sched, job->pid, 0, (job->data == LAYERS - 1) ? job->data : (job->data + 1));
 		}
-		else
+		else if (job->runtime != SCHEDULER_UNSCHEDULE)
 		{
 			insert(sched, job->pid, 1, job->data);
 		}

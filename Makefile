@@ -1,8 +1,8 @@
 CC=clang
 CXX=llvm-g++
 ARCH=i386
-CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH)
-#CFLAGS=-O4 -DNDEBUG -pipe -arch $(ARCH)
+#CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH)
+CFLAGS=-O3 -DNDEBUG -pipe -arch $(ARCH)
 LDFLAGS=-L. -arch $(ARCH)
 AR=ar
 #AR=llvm-ar
@@ -10,7 +10,7 @@ AR=ar
 test: test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
 	
-libyarns.a: pages.o sched_multilevel.o sched_roundrobin.o yarn.o smp_scheduler.o sched_random.o alloc.o rbtree.o sched_rb.o
+libyarns.a: pages.o sched_multilevel.o sched_roundrobin.o yarn.o smp_scheduler.o sched_random.o alloc.o rbtree.o sched_rb.o preempt.o
 	$(AR) rcs $@ $^
 
 test.o: test.c config.h yarn.h yarns.h
@@ -37,11 +37,14 @@ yarn.o: yarn.c yarn.h scheduler.h pages.h lock.h config.h debug.h
 smp_scheduler.o: smp_scheduler.c smp_scheduler.h scheduler.h config.h lock.h debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-alloc.o: alloc.c alloc.h pages.h debug.h
+alloc.o: alloc.c alloc.h pages.h debug.h config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 rbtree.o: rbtree.cpp rbtree.h alloc.h
 	$(CXX) $(CFLAGS) -c -o $@ $<
+
+preempt.o: preempt.c preempt.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
 	rm -f *.o test libyarns.a

@@ -17,6 +17,8 @@
 #include "alloc.h"
 #include "debug.h"
 
+#define STACK_GROWTH_DOWN
+
 #define DEBUG_MODULE DEBUG_YARNS
 
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
@@ -26,6 +28,7 @@ typedef struct _yarn yarn;
 struct _yarn
 {
 	ucontext_t context;
+	unsigned long pid;
 };
 
 static yarn* process_table[YARNS_MAX_PROCESSES] = { 0 };
@@ -62,7 +65,7 @@ static yarn_thread_data _ttd;
 #endif
 
 #if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
-//#define BASE_CONTEXT_NEEDS_STACK
+#define BASE_CONTEXT_NEEDS_STACK
 #endif
 
 static void yarn_check_stack ( const void* base )
@@ -80,7 +83,9 @@ static void yarn_launcher ( yarn* active_yarn, void (*routine)(void*), void* uda
 {
 	// basically a bootstrap routine for each yarn which runs the routine then cleans up
 	routine(udata);
+	DEBUG("yarn %p completed, setcontext\n", active_yarn);
 	TTD.runtime_remaining = SCHEDULER_UNSCHEDULE;
+	process_table[active_yarn->pid] = 0;
 	setcontext(&(TTD.sched_context));
 }
 
@@ -98,12 +103,6 @@ static void deallocate_stack ( ucontext_t* ctx )
 	page_deallocate(ctx->uc_stack.ss_sp, STACK_SIZE);
 }
 
-static void basic_launch ()
-{
-	puts("basic_launch");
-	_Exit(0);
-}
-
 int __make_trap = 1; // this traps the odd situation where makecontext doesn't work and we get random code jumping in here
 
 static yarn_t list_insert ( yarn* active_yarn )
@@ -112,6 +111,7 @@ static yarn_t list_insert ( yarn* active_yarn )
 	DEBUG("pid(%d)=yarn(%p)\n", pid, active_yarn);
 	assert(maxpid < YARNS_MAX_PROCESSES);
 	process_table[pid] = active_yarn;
+	active_yarn->pid = pid;
 	return pid;
 }
 

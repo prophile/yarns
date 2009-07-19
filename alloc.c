@@ -31,13 +31,6 @@ struct _little_page_info
 	unsigned char* nextbase;
 };
 
-typedef struct _little_block_info little_block_info;
-
-struct _little_block_info
-{
-	unsigned long len;
-};
-
 #define BIG_BOOK_HASH_SIZE 256
 
 static lock_t big_lock;
