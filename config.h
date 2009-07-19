@@ -1,7 +1,7 @@
 #ifndef __YARNS_CONFIG__
 #define __YARNS_CONFIG__
 
-#define YARNS_STACK_PAGES 4
+#define YARNS_STACK_PAGES (32768/4096)
 #define YARNS_ENABLE_SMP
 // in µs
 #define YARNS_DEAD_SLEEP_TIME 50
