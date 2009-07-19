@@ -1,6 +1,6 @@
 CC=clang
 CXX=llvm-g++
-ARCH=x86_64
+ARCH=i386
 CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH)
 #CFLAGS=-O4 -DNDEBUG -pipe -arch $(ARCH)
 LDFLAGS=-L. -arch $(ARCH)

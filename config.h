@@ -25,6 +25,6 @@
 #define YARNS_MAX_PROCESSES 65536
 
 // overrides
-#define YARNS_OVERRIDE_CORE_COUNT 16
+//#define YARNS_OVERRIDE_CORE_COUNT 2
 
 #endif
