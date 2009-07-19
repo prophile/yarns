@@ -84,4 +84,6 @@ unsigned long fifo_dequeue ( fifo* q )
 		yfree(seg);
 		if (!q->head) q->tail = 0;
 	}
+	q->length--;
+	return val;
 }
