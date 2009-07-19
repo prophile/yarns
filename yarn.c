@@ -170,6 +170,7 @@ void yarn_yield ( yarn_t target )
 	// ignore target for now
 	TTD.runtime_remaining = 1;
 	// pop back over to the scheduler
+	DEBUG("swapcontext in yield\n");
 	swapcontext(&(TTD.yarn_current->context), &(TTD.sched_context));
 }
 
@@ -208,6 +209,7 @@ static void yarn_processor ( unsigned long procID )
 		// set all the stuff up
 		TTD.yarn_current = process_table[activeJob.pid];
 		// swap contexts
+		DEBUG("swapcontext to yarn\n");
 		rc = swapcontext(&(TTD.sched_context), &(TTD.yarn_current->context));
 		// check it actually worked
 		if (rc == -1)
