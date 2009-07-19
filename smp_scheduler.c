@@ -34,7 +34,13 @@ void smp_sched_init ( unsigned long procs )
 
 static unsigned long select_core_least_load ()
 {
+	static unsigned long last_min = 0, last_min_cd = 0;
 	unsigned long i, min = ~0UL, minVal = ~0UL, jc;
+	if (last_min_cd > 0)
+	{
+		last_min_cd--;
+		return last_min;
+	}
 	for (i = 0; i < nprocs; i++)
 	{
 		jc = jobcounts[i];
@@ -45,6 +51,8 @@ static unsigned long select_core_least_load ()
 		}
 	}
 	assert(minVal != ~0UL); // this makes very little sense
+	last_min_cd = 3;
+	last_min = min;
 	return min;
 }
 

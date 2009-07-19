@@ -14,7 +14,7 @@
 #else
 
 void yallocinit ();
-void* yalloc ( unsigned long len );
+void* yalloc ( unsigned long len ) __attribute__((malloc));
 void yfree ( void* ptr );
 
 #endif

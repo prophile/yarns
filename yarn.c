@@ -138,6 +138,11 @@ static void fetch_context ( ucontext_t* uctx )
 	__make_trap = 1;
 }
 
+yarn_t yarn_current ( void )
+{
+	return TTD.yarn_current->pid;
+}
+
 yarn_t yarn_new ( void (*routine)(void*), void* udata )
 {
 	// grab memory
