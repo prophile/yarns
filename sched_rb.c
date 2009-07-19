@@ -70,13 +70,21 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 	{
 		void* pidPtr;
 		bool found = rbtree_search(sched->processTree, minTime, &pidPtr);
-		assert(found);
-		job->pid = (unsigned long)pidPtr;
-		job->runtime = job->data = minTime - sched->vtime;
-		if (job->runtime < YARNS_TIMESLICE)
+		if (found)
 		{
-			job->runtime = YARNS_TIMESLICE;
-			job->data = RB_UNITS;
+			job->pid = (unsigned long)pidPtr;
+			job->runtime = job->data = minTime - sched->vtime;
+			if (job->runtime < YARNS_TIMESLICE)
+			{
+				job->runtime = YARNS_TIMESLICE;
+				job->data = RB_UNITS;
+			}
+		}
+		else
+		{
+			job->pid = 0;
+			job->runtime = 0;
+			job->data = 0;
 		}
 	}
 	if (shouldReschedule)

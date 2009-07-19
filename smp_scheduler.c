@@ -94,7 +94,7 @@ void smp_sched_select ( unsigned long core, scheduler_job* job )
 	{
 		// no job found, designate this core for receiving jobs
 		c = select_core_most_load();
-		if (c != core)
+		if (c != core && (jobcounts[c] - jobcounts[core]) >= 2)
 		{
 			doselect(c, job);
 			if (job->pid != 0)
