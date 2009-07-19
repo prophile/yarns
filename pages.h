@@ -12,5 +12,6 @@
 void* page_allocate ( unsigned long bytes, unsigned options, unsigned permissions );
 void page_permissions ( void* ptr, unsigned long bytes, unsigned permissions );
 void page_deallocate ( void* ptr, unsigned long bytes );
+void page_copy ( void* src, void* dst, unsigned long bytes );
 
 #endif

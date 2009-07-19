@@ -55,6 +55,11 @@ void page_deallocate ( void* ptr, unsigned long bytes )
 	assert(!(bytes % 4096));
 	vm_deallocate(mach_task_self(), (vm_address_t)ptr, bytes);
 }
+
+void page_copy ( void* src, void* dst, unsigned long bytes )
+{
+	mach_vm_copy(mach_task_self(), (mach_vm_address_t)src, bytes, (mach_vm_address_t)dst);
+}
 #else
 #include <stdlib.h>
 #include <sys/types.h>
@@ -91,5 +96,10 @@ void page_deallocate ( void* ptr, unsigned long bytes )
 {
 	(void)bytes;
 	free(ptr);
+}
+
+void page_copy ( void* src, void* dst, unsigned long bytes )
+{
+	memcpy(dst, src, bytes);
 }
 #endif
