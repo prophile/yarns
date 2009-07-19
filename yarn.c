@@ -62,7 +62,7 @@ static yarn_thread_data _ttd;
 #endif
 
 #if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
-#define BASE_CONTEXT_NEEDS_STACK
+//#define BASE_CONTEXT_NEEDS_STACK
 #endif
 
 static void yarn_check_stack ( const void* base )

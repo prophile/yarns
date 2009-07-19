@@ -18,7 +18,7 @@ struct _bigalloc_book
 	bigalloc_book* next;
 };
 
-#define LITTLE_PAGES_COUNT 8
+#define LITTLE_PAGES_COUNT 4
 #define BIG_PAGE_THRESHOLD 4096
 #define LITTLE_PAGES_SIZE (4096*LITTLE_PAGES_COUNT)
 
@@ -99,7 +99,7 @@ static void little_free ( void* ptr )
 	lptr -= (lptr % LITTLE_PAGES_SIZE);
 	lpi = (little_page_info*)lptr;
 	lock_lock(&little_lock);
-	if (--lpi->nalloc == 0)
+	if (--(lpi->nalloc) == 0)
 	{
 		if ((unsigned char*)lpi == little_page_active)
 		{
@@ -221,7 +221,7 @@ void yfree ( void* ptr )
 	{
 		// big granularity
 		unsigned long len = bigbook_eatlen(lptr);
-		if (len == 0)
+		if (len == 0 && LITTLE_PAGES_COUNT > 1)
 		{
 			// we must have been mistaken and it was a little block
 			little_free(ptr);

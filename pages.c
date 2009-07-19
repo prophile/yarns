@@ -17,12 +17,11 @@
 
 void* page_allocate ( unsigned long bytes, unsigned options, unsigned permissions )
 {
-	kern_return_t rt;
 	void* pointer = 0;
 	vm_inherit_t inheritType;
 	DEBUG("Allocating %d bytes = %d pages", bytes, bytes / 4096);
 	assert(!(bytes % 4096));
-	rt = vm_allocate(mach_task_self(), (vm_address_t*)&pointer, bytes, 1);
+	vm_allocate(mach_task_self(), (vm_address_t*)&pointer, bytes, 1);
 	assert(pointer);
 	DEBUG(" = %p\n", pointer);
 	if (options & PAGE_SECURE)
@@ -45,7 +44,7 @@ void page_permissions ( void* ptr, unsigned long bytes, unsigned permissions )
 		newProt |= VM_PROT_WRITE;
 	if (permissions & PAGE_EXECUTE)
 		newProt |= VM_PROT_EXECUTE;
-	mach_vm_protect(mach_task_self(), (mach_vm_address_t)ptr, bytes, 0, permissions);
+	mach_vm_protect(mach_task_self(), (mach_vm_address_t)ptr, bytes, 0, newProt);
 }
 
 void page_deallocate ( void* ptr, unsigned long bytes )
