@@ -31,10 +31,10 @@ sched_random.o: sched_random.c config.h scheduler.h debug.h
 sched_rb.o: sched_rb.c scheduler.h alloc.h debug.h rbtree.h config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-yarn.o: yarn.c yarn.h scheduler.h pages.h lock.h config.h debug.h
+yarn.o: yarn.c yarn.h scheduler.h pages.h lock.h atomic.h config.h debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-smp_scheduler.o: smp_scheduler.c smp_scheduler.h scheduler.h config.h lock.h debug.h
+smp_scheduler.o: smp_scheduler.c smp_scheduler.h scheduler.h config.h lock.h atomic.h debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 alloc.o: alloc.c alloc.h pages.h debug.h config.h
