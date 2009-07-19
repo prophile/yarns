@@ -16,14 +16,15 @@
 #include <unistd.h>
 #include "alloc.h"
 #include "debug.h"
-
-#define STACK_GROWTH_DOWN
+#include <stdbool.h>
 
 #define DEBUG_MODULE DEBUG_YARNS
 
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
 
 typedef struct _yarn yarn;
+
+static bool live = 0;
 
 struct _yarn
 {
@@ -159,6 +160,8 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 	prepare_context(active_yarn, routine, udata);
 	// insert it into the yarn list
 	pid = list_insert(active_yarn);
+	if (live)
+		smp_sched_insert(pid, SCHED_PRIO_NORMAL);
 	return pid;
 }
 
@@ -189,6 +192,7 @@ static void yarn_processor ( unsigned long procID )
 	activeJob.pid = 0;
 	activeJob.runtime = 0;
 	activeJob.data = 0;
+	activeJob.priority = SCHED_PRIO_NORMAL;
 	while (!breakProcessor)
 	{
 		smp_sched_select(procID, &activeJob);
@@ -263,8 +267,9 @@ void yarn_process ()
 	// set up all the yarns in the scheduler
 	for (i = 1; i < maxpid; i++)
 	{
-		smp_sched_insert(i);
+		smp_sched_insert(i, SCHED_PRIO_NORMAL);
 	}
+	live = 1;
 #ifdef YARNS_ENABLE_SMP
 		// create the secondary threads
 	for (i = 1; i < nprocs; i++)

@@ -61,8 +61,9 @@ void scheduler_yfree ( scheduler* sched )
 	yfree(sched);
 }
 
-void scheduler_insert ( scheduler* sched, unsigned long pid )
+void scheduler_insert ( scheduler* sched, unsigned long pid, scheduler_priority prio )
 {
+	// ignore priority
 	scheduler_joblist* selectedList = sched->baselist;
 	assert(selectedList->n < JOBLIST_LEN);
 	selectedList->jobs[selectedList->n++] = pid;

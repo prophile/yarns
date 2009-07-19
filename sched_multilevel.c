@@ -11,6 +11,8 @@
 
 #define LAYERS 20
 
+static const int PRIO_LAYER_MAP[] = { 0, 1, 2, 5, 10, 15 };
+
 typedef struct _sched_queue_job sched_queue_job;
 
 struct _sched_queue_job
@@ -81,9 +83,9 @@ static void insert ( scheduler* sched, unsigned long pid, int skip, int level )
 	}
 }
 
-void scheduler_insert ( scheduler* sched, unsigned long pid )
+void scheduler_insert ( scheduler* sched, unsigned long pid, scheduler_priority prio )
 {
-	insert(sched, pid, 0, 0);
+	insert(sched, pid, 0, PRIO_LAYER_MAP[(int)prio]);
 }
 
 static void trueselect ( scheduler* sched, scheduler_job* job, int secondary )

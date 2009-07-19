@@ -40,8 +40,9 @@ static void insert ( scheduler* sched, unsigned long pid, unsigned long time )
 	DEBUG("RB inserted job %lu for vtime %lu\n", pid, vtime);
 }
 
-void scheduler_insert ( scheduler* sched, unsigned long pid )
+void scheduler_insert ( scheduler* sched, unsigned long pid, scheduler_priority prio )
 {
+	// ignore priority for now
 	insert(sched, pid, RB_UNITS);
 }
 

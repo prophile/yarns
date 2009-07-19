@@ -36,8 +36,9 @@ scheduler* scheduler_init ()
 	return sched;
 }
 
-void scheduler_insert ( scheduler* sched, unsigned long pid )
+void scheduler_insert ( scheduler* sched, unsigned long pid, scheduler_priority prio )
 {
+	// the round robin is fair to everything and we ignore the priority
 	scheduler_queue_entry* newEntry;
 	scheduler_queue_entry* prevTail;
 	newEntry = (scheduler_queue_entry*)yalloc(sizeof(scheduler_queue_entry));

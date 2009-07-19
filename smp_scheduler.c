@@ -73,12 +73,12 @@ static unsigned long select_core_most_load ()
 	return max;
 }
 
-void smp_sched_insert ( unsigned long pid )
+void smp_sched_insert ( unsigned long pid, scheduler_priority prio )
 {
 	unsigned long target = select_core_least_load();
 	DEBUG("scheduling process %lu for processor %lu\n", pid, target);
 	lock_lock(locks + target);
-	scheduler_insert(schedulers[target], pid);
+	scheduler_insert(schedulers[target], pid, prio);
 	jobcounts[target]++;
 	lock_unlock(locks + target);
 }
