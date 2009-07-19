@@ -4,6 +4,8 @@
 #include "debug.h"
 #include <string.h>
 
+#ifndef YARNS_USE_SYSTEM_ALLOCATOR
+
 #define DEBUG_MODULE DEBUG_ALLOCATOR
 
 typedef struct _bigalloc_book bigalloc_book;
@@ -214,3 +216,5 @@ void yfree ( void* ptr )
 		DEBUG("big allocator released %d pages\n", len/4096);
 	}
 }
+
+#endif

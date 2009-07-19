@@ -53,7 +53,7 @@ public:
 	
 	pointer allocate(size_type len, yallocator<void>::const_pointer hint = 0)
 	{
-		return (pointer)yalloc(len);
+		return (pointer)yalloc(len*sizeof(T));
 	}
 	
 	void deallocate(pointer p, size_type n)

@@ -48,7 +48,7 @@ void scheduler_insert ( scheduler* sched, unsigned long pid )
 void scheduler_select ( scheduler* sched, scheduler_job* job )
 {
 	unsigned long oldpid = job->pid;
-	bool shouldReschedule = job->runtime != SCHEDULER_UNSCHEDULE;
+	bool shouldReschedule = job->runtime != SCHEDULER_UNSCHEDULE && job->pid != 0;
 	unsigned long minTime = rbtree_min(sched->processTree);
 	unsigned long runtime, totalTime = job->data;
 	if (job->runtime > 0 && job->runtime != SCHEDULER_UNSCHEDULE)
