@@ -10,7 +10,7 @@ AR=ar
 test: test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
 	
-libyarns.a: pages.o sched_multilevel.o sched_roundrobin.o yarn.o smp_scheduler.o sched_random.o alloc.o rbtree.o sched_rb.o preempt.o
+libyarns.a: pages.o sched_multilevel.o sched_roundrobin.o yarn.o smp_scheduler.o sched_random.o alloc.o rbtree.o sched_rb.o preempt.o queue.o
 	$(AR) rcs $@ $^
 
 test.o: test.c yarn.h alloc.h config.h
@@ -44,6 +44,9 @@ rbtree.o: rbtree.cpp rbtree.h alloc.h
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
 preempt.o: preempt.c preempt.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+queue.o: queue.c queue.h alloc.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
