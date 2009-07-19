@@ -2,6 +2,7 @@
 #include "pages.h"
 #include <stdlib.h>
 #include "debug.h"
+#include "lock.h"
 #include <string.h>
 
 #ifndef YARNS_USE_SYSTEM_ALLOCATOR
@@ -39,6 +40,9 @@ struct _little_block_info
 
 #define BIG_BOOK_HASH_SIZE 256
 
+static lock_t big_lock;
+static lock_t little_lock;
+
 static bigalloc_book books[BIG_BOOK_HASH_SIZE];
 static unsigned char* little_page_active = NULL;
 
@@ -72,7 +76,9 @@ static little_page_info* get_little_page ()
 static void* little_alloc ( unsigned long len )
 {
 	unsigned char* ptr;
-	little_page_info* lpi = get_little_page();
+	little_page_info* lpi;
+	lock_lock(&little_lock);
+	lpi = get_little_page();
 	if (lpi->remainingLen < len)
 	{
 		little_page_allocate();
@@ -82,6 +88,7 @@ static void* little_alloc ( unsigned long len )
 	lpi->remainingLen -= len;
 	lpi->nextbase += len;
 	lpi->nalloc++;
+	lock_unlock(&little_lock);
 	return ptr;
 }
 
@@ -91,6 +98,7 @@ static void little_free ( void* ptr )
 	unsigned long lptr = (unsigned long)ptr;
 	lptr -= (lptr % LITTLE_PAGES_SIZE);
 	lpi = (little_page_info*)lptr;
+	lock_lock(&little_lock);
 	if (--lpi->nalloc == 0)
 	{
 		if ((unsigned char*)lpi == little_page_active)
@@ -106,6 +114,7 @@ static void little_free ( void* ptr )
 			page_deallocate(ptr, LITTLE_PAGES_SIZE);
 		}
 	}
+	lock_unlock(&little_lock);
 }
 
 void yallocinit ()
@@ -117,6 +126,8 @@ void yallocinit ()
 		books[i].len = 0;
 		books[i].next = 0;
 	}
+	lock_init(&big_lock);
+	lock_init(&little_lock);
 }
 
 static void bigbook_insert ( unsigned long lptr, unsigned long len )
@@ -124,6 +135,7 @@ static void bigbook_insert ( unsigned long lptr, unsigned long len )
 	unsigned idx = lptr;
 	idx /= 4096;
 	idx %= BIG_BOOK_HASH_SIZE;
+	lock_lock(&big_lock);
 	if (books[idx].lptr == 0)
 	{
 		// insert straight off
@@ -141,20 +153,22 @@ static void bigbook_insert ( unsigned long lptr, unsigned long len )
 		book->lptr = lptr;
 		book->len = len;
 	}
+	lock_unlock(&big_lock);
 }
 
 static unsigned long bigbook_eatlen ( unsigned long lptr )
 {
-	unsigned idx = lptr;
+	unsigned idx = lptr, len;
 	bigalloc_book* book;
 	idx /= 4096;
 	idx %= BIG_BOOK_HASH_SIZE;
+	lock_lock(&big_lock);
 	book = &books[idx];
 	while (book && book->lptr != lptr)
 		book = book->next;
 	if (book->lptr == lptr)
 	{
-		unsigned long len = book->len;
+		len = book->len;
 		if (book != &books[idx])
 		{
 			// it was allocated, eat it
@@ -164,12 +178,13 @@ static unsigned long bigbook_eatlen ( unsigned long lptr )
 			secondBook->next = book->next;
 			yfree(book);
 		}
-		return len;
 	}
 	else
 	{
-		return 0; // didn't find it... strange
+		len = 0; // didn't find it... strange
 	}
+	lock_unlock(&big_lock);
+	return len;
 }
 
 void* yalloc ( unsigned long len )
