@@ -4,7 +4,7 @@
 typedef struct _scheduler_job
 {
 	unsigned long pid; // 0 if no previous job, return 0 for shutdown
-	unsigned long runtime; // number of ns to run; remaining ns at end if voluntary, 0 if involuntary, SCHEDULER_UNSCHEDULE for unscheduling
+	unsigned long runtime; // number of µs to run; remaining µs at end if voluntary, 0 if involuntary, SCHEDULER_UNSCHEDULE for unscheduling
 	unsigned long data; // extra data defined by scheduler, 0 by default
 } scheduler_job;
 

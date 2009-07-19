@@ -11,8 +11,8 @@
 
 #define DEBUG_EVERYTHING ~0
 
-#define DEBUG_WHAT DEBUG_YARNS
+#define DEBUG_WHAT DEBUG_SCHEDULER|DEBUG_SMP_SCHEDULER
 
-#define DEBUG(format, args...) if (DEBUG_MODULE & DEBUG_WHAT) { fprintf(stderr, format , ## args); }
+#define DEBUG(format, args...) if (DEBUG_MODULE & (DEBUG_WHAT)) { fprintf(stderr, format , ## args); }
 
 #endif

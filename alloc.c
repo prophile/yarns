@@ -2,6 +2,7 @@
 #include "pages.h"
 #include <stdlib.h>
 #include "debug.h"
+#include <string.h>
 
 #define DEBUG_MODULE DEBUG_ALLOCATOR
 
@@ -14,7 +15,8 @@ struct _bigalloc_book
 	bigalloc_book* next;
 };
 
-#define LITTLE_PAGES_COUNT 2
+#define LITTLE_PAGES_COUNT 8
+#define BIG_PAGE_THRESHOLD 4096
 #define LITTLE_PAGES_SIZE (4096*LITTLE_PAGES_COUNT)
 
 typedef struct _little_page_info little_page_info;
@@ -41,7 +43,7 @@ static unsigned char* little_page_active = NULL;
 static void little_page_allocate ()
 {
 	little_page_info* lpi;
-	little_page_active = page_allocate(LITTLE_PAGES_SIZE);
+	little_page_active = page_allocate(LITTLE_PAGES_SIZE, PAGE_ZEROFILL, PAGE_READ | PAGE_WRITE);
 	lpi = (little_page_info*)little_page_active;
 	lpi->nalloc = 0;
 	lpi->nextbase = little_page_active + sizeof(little_page_info);
@@ -89,8 +91,18 @@ static void little_free ( void* ptr )
 	lpi = (little_page_info*)lptr;
 	if (--lpi->nalloc == 0)
 	{
-		DEBUG("little allocator freed %d pages\n", LITTLE_PAGES_COUNT);
-		page_deallocate(ptr, LITTLE_PAGES_SIZE);
+		if ((unsigned char*)lpi == little_page_active)
+		{
+			DEBUG("little allocator current page now has no content, reusing\n");
+			lpi->remainingLen = LITTLE_PAGES_SIZE - sizeof(little_page_info);
+			lpi->nextbase = little_page_active + sizeof(little_page_info);
+			memset(lpi->nextbase, 0, lpi->remainingLen);
+		}
+		else
+		{
+			DEBUG("little allocator freed %d pages\n", LITTLE_PAGES_COUNT);
+			page_deallocate(ptr, LITTLE_PAGES_SIZE);
+		}
 	}
 }
 
@@ -166,7 +178,7 @@ void* yalloc ( unsigned long len )
 	{
 		len += 4095;
 		len &= ~4095;
-		ptr = page_allocate(len);
+		ptr = page_allocate(len, PAGE_ZEROFILL, PAGE_READ | PAGE_WRITE);
 		lptr = (unsigned long)ptr;
 		bigbook_insert(lptr, len);
 		DEBUG("big allocator claimed %d pages\n", len/4096);
@@ -183,7 +195,7 @@ void* yalloc ( unsigned long len )
 void yfree ( void* ptr )
 {
 	unsigned long lptr = (unsigned long)ptr;
-	if (lptr & 4095)
+	if (lptr % BIG_PAGE_THRESHOLD)
 	{
 		// small granularity
 		little_free(ptr); // for now
@@ -192,6 +204,12 @@ void yfree ( void* ptr )
 	{
 		// big granularity
 		unsigned long len = bigbook_eatlen(lptr);
+		if (len == 0)
+		{
+			// we must have been mistaken and it was a little block
+			little_free(ptr);
+			return;
+		}
 		page_deallocate(ptr, len);
 		DEBUG("big allocator released %d pages\n", len/4096);
 	}

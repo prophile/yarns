@@ -87,7 +87,7 @@ static void yarn_launcher ( yarn* active_yarn, void (*routine)(void*), void* uda
 static void allocate_stack ( ucontext_t* ctx )
 {
 	ctx->uc_stack.ss_size = STACK_SIZE;
-	ctx->uc_stack.ss_sp = page_allocate(STACK_SIZE);
+	ctx->uc_stack.ss_sp = page_allocate(STACK_SIZE, 0, PAGE_READ | PAGE_WRITE);
 	assert(ctx->uc_stack.ss_sp);
 	ctx->uc_stack.ss_flags = 0;
 	yarn_check_stack(ctx->uc_stack.ss_sp);
@@ -220,7 +220,9 @@ static void yarn_processor ( unsigned long procID )
 #ifdef YARNS_ENABLE_SMP
 static unsigned long numprocs ()
 {
-#if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
+#if defined(YARNS_OVERRIDE_CORE_COUNT)
+	return YARNS_OVERRIDE_CORE_COUNT;
+#elif YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
 	unsigned long nproc = 4;
 	size_t oldLen = sizeof(nproc);
 	int namevec[2] = { CTL_HW, HW_NCPU };
