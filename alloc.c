@@ -18,7 +18,7 @@ struct _bigalloc_book
 	bigalloc_book* next;
 };
 
-#define LITTLE_PAGES_COUNT 4
+#define LITTLE_PAGES_COUNT 1
 #define BIG_PAGE_THRESHOLD 4096
 #define LITTLE_PAGES_SIZE (4096*LITTLE_PAGES_COUNT)
 
@@ -47,7 +47,7 @@ static void little_page_allocate ()
 	lpi->nalloc = 0;
 	lpi->nextbase = little_page_active + sizeof(little_page_info);
 	lpi->remainingLen = LITTLE_PAGES_SIZE - sizeof(little_page_info);
-	DEBUG("little allocator claimed %d new pages\n", LITTLE_PAGES_COUNT);
+	DEBUG("little allocator claimed %d new pages, starting at %p\n", LITTLE_PAGES_COUNT, little_page_active);
 }
 
 static little_page_info* get_little_page ()
@@ -71,6 +71,7 @@ static void* little_alloc ( unsigned long len )
 	unsigned char* ptr;
 	little_page_info* lpi;
 	lock_lock(&little_lock);
+	DEBUG("little_alloc: %lu\n", len);
 	lpi = get_little_page();
 	if (lpi->remainingLen < len)
 	{
@@ -92,6 +93,7 @@ static void little_free ( void* ptr )
 	lptr -= (lptr % LITTLE_PAGES_SIZE);
 	lpi = (little_page_info*)lptr;
 	lock_lock(&little_lock);
+	DEBUG("little_free: %p (from block %p)\n", ptr, lpi);
 	if (--(lpi->nalloc) == 0)
 	{
 		if ((unsigned char*)lpi == little_page_active)
@@ -104,7 +106,7 @@ static void little_free ( void* ptr )
 		else
 		{
 			DEBUG("little allocator freed %d pages\n", LITTLE_PAGES_COUNT);
-			page_deallocate(ptr, LITTLE_PAGES_SIZE);
+			page_deallocate(lpi, LITTLE_PAGES_SIZE);
 		}
 	}
 	lock_unlock(&little_lock);
@@ -140,7 +142,7 @@ static void bigbook_insert ( unsigned long lptr, unsigned long len )
 		bigalloc_book* book = &books[idx];
 		while (book->next)
 			book = book->next;
-		book->next = yalloc(sizeof(bigalloc_book));
+		book->next = little_alloc(sizeof(bigalloc_book));
 		book = book->next;
 		book->next = 0;
 		book->lptr = lptr;
@@ -169,12 +171,12 @@ static unsigned long bigbook_eatlen ( unsigned long lptr )
 			while (secondBook->next != book)
 				secondBook = secondBook->next;
 			secondBook->next = book->next;
-			yfree(book);
+			little_free(book);
 		}
 	}
 	else
 	{
-		len = 0; // didn't find it... strange
+		len = 0; // didn't find it... strange, must have been from the little allocator
 	}
 	lock_unlock(&big_lock);
 	return len;

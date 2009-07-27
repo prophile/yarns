@@ -49,7 +49,7 @@ int main ( int argc, char** argv )
 	{
 		if (i == 3)
 			yarn_new(myRoutine2, 0);
-		//yarnify(i);
+		yarnify(i);
 	}
 	//yarn_new(quit, 0);
 	yarn_process ();
