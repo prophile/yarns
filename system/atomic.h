@@ -6,7 +6,11 @@
 #define ATOMIC_API_GCC 1
 #define ATOMIC_API_OSATOMIC 2
 
+#if defined(__ppc__)
+#define ATOMIC_API ATOMIC_API_OSATOMIC
+#else
 #define ATOMIC_API ATOMIC_API_GCC
+#endif
 
 #if ATOMIC_API == ATOMIC_API_GCC
 

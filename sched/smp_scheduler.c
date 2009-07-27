@@ -27,7 +27,7 @@ void smp_sched_init ( unsigned long procs )
 	single_jobs = yalloc(procs*sizeof(unsigned long));
 	DEBUG("setting up proc 0, with scheduler\n");
 	lock_init(&locks[0]);
-	schedulers[i] = scheduler_init();
+	schedulers[0] = scheduler_init();
 	for (i = 1; i < procs; i++)
 	{
 		DEBUG("setting up proc %lu\n", i);
