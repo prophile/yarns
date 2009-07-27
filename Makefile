@@ -2,20 +2,39 @@ CC=clang
 CXX=llvm-g++
 ARCH=i386
 INCLUDES=-Idata -Iinclude/yarns -Ilib -Isched -Isystem
-CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH) $(INCLUDES)
-#CFLAGS=-O3 -DNDEBUG -pipe -arch $(ARCH) $(INCLUDES)
+# DEBUG
+#CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH) $(INCLUDES)
+# RELEASE
+CFLAGS=-O4 -DNDEBUG -pipe -arch $(ARCH) $(INCLUDES)
+# END
+TEST_CFLAGS=-arch $(ARCH) $(INCLUDES)
 LDFLAGS=-L. -arch $(ARCH)
-AR=ar
-#AR=llvm-ar
+
+OBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/preempt.o obj/queue.o
 
 test: obj/test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
-	
-libyarns.a: obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/preempt.o obj/queue.o
-	$(AR) rcs $@ $^
+
+# DEBUG
+#libyarns.a: $(OBJECTS)
+#	ar rcs $@ $^
+
+# RELEASE
+libyarns.a: obj/libyarns.o
+	ar rcs $@ $^
+
+obj/libyarns.o: obj/libyarns.s
+	as -arch $(ARCH) -o $@ $<
+
+obj/libyarns.s: obj/libyarns.bc
+	llc -f -o $@ $<
+
+obj/libyarns.bc: $(OBJECTS)
+	llvm-ld -internalize-public-api-file=exports.txt -link-as-library -o $@ $^
+# END
 
 obj/test.o: test.c lib/yarn.h system/alloc.h lib/config.h
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(TEST_CFLAGS) -c -o $@ $<
 
 obj/pages.o: system/pages.c system/pages.h lib/config.h lib/debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
@@ -54,4 +73,4 @@ obj/queue.o: data/queue.c data/queue.h system/alloc.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f obj/*.o test libyarns.a
+	rm -f obj/*.o obj/*.s obj/*.bc test libyarns.a

@@ -177,7 +177,7 @@ void yarn_yield ( yarn_t target )
 	swapcontext(&(TTD.yarn_current->context), &(TTD.sched_context));
 }
 
-#ifdef YARNS_PREEMPT
+#if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 static void yarn_preempt_handle ( unsigned long thread )
 {
 	pthread_kill(threads[thread], SIGUSR2);
@@ -208,7 +208,7 @@ static void yarn_processor ( unsigned long procID )
 #ifdef BASE_CONTEXT_NEEDS_STACK
 	allocate_stack(&(TTD.sched_context));
 #endif
-#ifdef YARNS_PREEMPT
+#if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 	sa.sa_sigaction = (void (*)(int, struct __siginfo *, void *))preempt_signal_handler;
 	sa.sa_flags = SA_SIGINFO;
 	sigemptyset(&sa.sa_mask);
@@ -236,12 +236,12 @@ static void yarn_processor ( unsigned long procID )
 		TTD.yarn_current = process_table[activeJob.pid];
 		// swap contexts
 		DEBUG("swapcontext to yarn\n");
-#ifdef YARNS_PREEMPT
+#if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 		preempt(preempt_time() + activeJob.runtime, procID);
 		preempt_enable();
 #endif
 		rc = swapcontext(&(TTD.sched_context), &(TTD.yarn_current->context));
-#ifdef YARNS_PREEMPT
+#if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 		preempt_disable();
 #endif
 		// check it actually worked
@@ -298,7 +298,7 @@ void yarn_process ()
 #else
 	smp_sched_init(1);
 #endif
-#ifdef YARNS_PREEMPT
+#if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 	preempt_init();
 	preempt_handle = yarn_preempt_handle;
 #endif
@@ -313,7 +313,7 @@ void yarn_process ()
 		// create the secondary threads
 	for (i = 1; i < nprocs; i++)
 	{
-#ifdef YARNS_PREEMPT
+#if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 		preempt_disable();
 #endif
 		pthread_create(&threads[i], NULL, (void* (*)(void*))yarn_processor, (void*)i);
@@ -323,3 +323,11 @@ void yarn_process ()
 	// run the primary thread
 	yarn_processor(0);
 }
+
+#if YARNS_SYNERGY == YARNS_SYNERGY_MARKED
+void yarn_mark ()
+{
+#error Marked synergy is not yet implemented.
+#error Please try cooperative or preemptive.
+}
+#endif

@@ -1,4 +1,5 @@
-_yarn_new
-_yarn_yield
-_yarn_process
-_yallocinit
+yarn_new
+yarn_yield
+yarn_process
+yarn_current
+yarn_mark

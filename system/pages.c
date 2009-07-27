@@ -24,6 +24,7 @@ void* page_allocate ( unsigned long bytes, unsigned options, unsigned permission
 	vm_allocate(mach_task_self(), (vm_address_t*)&pointer, bytes, 1);
 	assert(pointer);
 	DEBUG(" = %p\n", pointer);
+#ifdef YARNS_MEMORY_ACCESS_CONTROL
 	if (options & PAGE_SECURE)
 		inheritType = VM_INHERIT_NONE;
 	else if (options & PAGE_SHARE)
@@ -32,11 +33,13 @@ void* page_allocate ( unsigned long bytes, unsigned options, unsigned permission
 		inheritType = VM_INHERIT_COPY;
 	mach_vm_inherit(mach_task_self(), (mach_vm_address_t)pointer, bytes, inheritType);
 	page_permissions(pointer, bytes, permissions);
+#endif
 	return pointer;
 }
 
 void page_permissions ( void* ptr, unsigned long bytes, unsigned permissions )
 {
+#ifdef YARNS_MEMORY_ACCESS_CONTROL
 	vm_prot_t newProt = VM_PROT_NONE;
 	if (permissions & PAGE_READ)
 		newProt |= VM_PROT_READ;
@@ -45,6 +48,7 @@ void page_permissions ( void* ptr, unsigned long bytes, unsigned permissions )
 	if (permissions & PAGE_EXECUTE)
 		newProt |= VM_PROT_EXECUTE;
 	mach_vm_protect(mach_task_self(), (mach_vm_address_t)ptr, bytes, 0, newProt);
+#endif
 }
 
 void page_deallocate ( void* ptr, unsigned long bytes )
@@ -69,6 +73,7 @@ void* page_allocate ( unsigned long bytes, unsigned options, unsigned permission
 	void* ptr = valloc(bytes);
 	if (options & PAGE_ZEROFILL)
 		memset(ptr, 0, bytes);
+#ifdef YARNS_MEMORY_ACCESS_CONTROL
 	if (options & PAGE_SECURE)
 		minherit(ptr, bytes, VM_INHERIT_NONE)
 	else if (options & PAGE_SHARE)
@@ -76,11 +81,13 @@ void* page_allocate ( unsigned long bytes, unsigned options, unsigned permission
 	else
 		minherit(ptr, bytes, VM_INHERIT_COPY);
 	page_permissions(ptr, bytes, permissions);
+#endif
 	return ptr;
 }
 
 void page_permissions ( void* ptr, unsigned long bytes, unsigned permissions )
 {
+#ifdef YARNS_MEMORY_ACCESS_CONTROL
 	int perms = 0;
 	if (permissions & PAGE_READ)
 		perms |= PROT_READ;
@@ -89,6 +96,7 @@ void page_permissions ( void* ptr, unsigned long bytes, unsigned permissions )
 	if (permissions & PROT_EXECUTE)
 		perms |= PROT_EXECUTE;
 	mprotect(ptr, bytes, perms);
+#endif
 }
 
 void page_deallocate ( void* ptr, unsigned long bytes )
