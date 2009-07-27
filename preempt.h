@@ -3,12 +3,16 @@
 
 #include <stdbool.h>
 
-typedef void (*preempt_handler)(void);
+typedef void (*preempt_handler)(unsigned long);
 
-unsigned long preempt_time ();
-void preempt ( unsigned long timestamp );
+void preempt_init ( void );
+unsigned long preempt_time ( void );
+void preempt ( unsigned long timestamp, unsigned long parameter );
+void preempt_cancel ( unsigned long timestamp );
+
+void preempt_disable ();
+void preempt_enable ();
 
 extern preempt_handler preempt_handle;
-extern volatile bool preempt_disable;
 
 #endif

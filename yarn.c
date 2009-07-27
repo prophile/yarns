@@ -17,6 +17,8 @@
 #include "alloc.h"
 #include "debug.h"
 #include <stdbool.h>
+#include "preempt.h"
+#include <string.h>
 
 #define DEBUG_MODULE DEBUG_YARNS
 
@@ -34,6 +36,7 @@ struct _yarn
 
 static yarn* process_table[YARNS_MAX_PROCESSES] = { 0 };
 static int maxpid = 1;
+static pthread_t threads[32];
 
 typedef struct _yarn_thread_data
 {
@@ -174,9 +177,25 @@ void yarn_yield ( yarn_t target )
 	swapcontext(&(TTD.yarn_current->context), &(TTD.sched_context));
 }
 
+#ifdef YARNS_PREEMPT
+static void yarn_preempt_handle ( unsigned long thread )
+{
+	pthread_kill(threads[thread], SIGUSR2);
+}
+
+static void preempt_signal_handler ( int sig, struct __siginfo* info, ucontext_t* context )
+{
+	assert(sig == SIGUSR2);
+	memcpy(TTD.yarn_current->context.uc_mcontext, context->uc_mcontext, context->uc_mcsize);
+	TTD.runtime_remaining = 0;
+	setcontext(&(TTD.sched_context));
+}
+#endif
+
 static void yarn_processor ( unsigned long procID )
 {
 	// this is the main routine run by each thread
+	struct sigaction sa;
 	volatile int breakProcessor = 0;
 	int rc;
 	unsigned deadSleepTime = YARNS_DEAD_SLEEP_TIME;
@@ -188,6 +207,13 @@ static void yarn_processor ( unsigned long procID )
 	scheduler_job activeJob;
 #ifdef BASE_CONTEXT_NEEDS_STACK
 	allocate_stack(&(TTD.sched_context));
+#endif
+#ifdef YARNS_PREEMPT
+	sa.sa_sigaction = (void (*)(int, struct __siginfo *, void *))preempt_signal_handler;
+	sa.sa_flags = SA_SIGINFO;
+	sigemptyset(&sa.sa_mask);
+	sigaddset(&sa.sa_mask, SIGUSR2);
+	sigaction(SIGUSR2, &sa, 0);
 #endif
 	TTD.sched_context.uc_link = 0;
 	activeJob.pid = 0;
@@ -210,7 +236,14 @@ static void yarn_processor ( unsigned long procID )
 		TTD.yarn_current = process_table[activeJob.pid];
 		// swap contexts
 		DEBUG("swapcontext to yarn\n");
+#ifdef YARNS_PREEMPT
+		preempt(preempt_time() + activeJob.runtime, procID);
+		preempt_enable();
+#endif
 		rc = swapcontext(&(TTD.sched_context), &(TTD.yarn_current->context));
+#ifdef YARNS_PREEMPT
+		preempt_disable();
+#endif
 		// check it actually worked
 		if (rc == -1)
 			perror("swapcontext failed");
@@ -265,6 +298,10 @@ void yarn_process ()
 #else
 	smp_sched_init(1);
 #endif
+#ifdef YARNS_PREEMPT
+	preempt_init();
+	preempt_handle = yarn_preempt_handle;
+#endif
 	TTDINIT_MAIN();
 	// set up all the yarns in the scheduler
 	for (i = 1; i < maxpid; i++)
@@ -276,10 +313,13 @@ void yarn_process ()
 		// create the secondary threads
 	for (i = 1; i < nprocs; i++)
 	{
-		pthread_t pt;
-		pthread_create(&pt, NULL, (void* (*)(void*))yarn_processor, (void*)i);
+#ifdef YARNS_PREEMPT
+		preempt_disable();
+#endif
+		pthread_create(&threads[i], NULL, (void* (*)(void*))yarn_processor, (void*)i);
 	}
 #endif
+	threads[i] = pthread_self();
 	// run the primary thread
 	yarn_processor(0);
 }

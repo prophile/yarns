@@ -46,7 +46,7 @@ alloc.o: alloc.c alloc.h pages.h debug.h config.h
 rbtree.o: rbtree.cpp rbtree.h alloc.h
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-preempt.o: preempt.c preempt.h
+preempt.o: preempt.c preempt.h rbtree.h lock.h atomic.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 queue.o: queue.c queue.h alloc.h

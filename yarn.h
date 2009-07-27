@@ -7,5 +7,6 @@ yarn_t yarn_current ( void ) __attribute__((pure));
 yarn_t yarn_new ( void (*routine)(void*), void* udata );
 void yarn_yield ( yarn_t target );
 void yarn_process ();
+void yarn_mark ();
 
 #endif

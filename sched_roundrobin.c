@@ -78,7 +78,7 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 	unsigned long pid, idx;
 	if (job->pid != 0 && job->runtime != SCHEDULER_UNSCHEDULE)
 	{
-		scheduler_insert(sched, job->pid);
+		scheduler_insert(sched, job->pid, SCHED_PRIO_NORMAL);
 	}
 	pid = jselect(sched);
 	job->pid = pid;

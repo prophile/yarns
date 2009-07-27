@@ -54,4 +54,9 @@ static inline unsigned long atomic_add ( volatile unsigned long* ptr, long amoun
 
 #endif
 
+static inline unsigned long atomic_sub ( volatile unsigned long* ptr, long amount )
+{
+	return atomic_add(ptr, -amount);
+}
+
 #endif
