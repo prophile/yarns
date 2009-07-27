@@ -1,3 +1,5 @@
+Makefile
+config.h
 test
 *.a
 *.o

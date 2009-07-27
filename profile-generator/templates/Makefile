@@ -1,37 +1,32 @@
-CC=clang
-CXX=llvm-g++
-ARCH=i386
+CC={$cc}
+CXX={$cxx}
 INCLUDES=-Idata -Iinclude/yarns -Ilib -Isched -Isystem
-# DEBUG
-CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH) $(INCLUDES)
-# RELEASE
-#CFLAGS=-O4 -DNDEBUG -pipe -arch $(ARCH) $(INCLUDES)
-# END
-TEST_CFLAGS=-arch $(ARCH) $(INCLUDES)
-LDFLAGS=-L. -arch $(ARCH)
+CFLAGS={$lib_cflags} $(INCLUDES)
+TEST_CFLAGS={$bin_cflags} $(INCLUDES)
+LDFLAGS={$ldflags}
 
 OBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/preempt.o obj/queue.o
 
 test: obj/test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-# DEBUG
+{ifnot $lto}
 libyarns.a: $(OBJECTS)
 	ar rcs $@ $^
+{/ifnot}
+{if $lto}
+libyarns.a: obj/libyarns.o
+	ar rcs $@ $^
 
-# RELEASE
-#libyarns.a: obj/libyarns.o
-#	ar rcs $@ $^
-#
-#obj/libyarns.o: obj/libyarns.s
-#	as -arch $(ARCH) -o $@ $<
-#
-#obj/libyarns.s: obj/libyarns.bc
-#	llc -f -o $@ $<
-#
-#obj/libyarns.bc: $(OBJECTS)
-#	llvm-ld -internalize-public-api-file=exports.txt -link-as-library -o $@ $^
-# END
+obj/libyarns.o: obj/libyarns.s
+	as {$asflags} -o $@ $<
+
+obj/libyarns.s: obj/libyarns.bc
+	llc -f -o $@ $<
+
+obj/libyarns.bc: $(OBJECTS)
+	llvm-ld -internalize-public-api-file=exports.txt -link-as-library -o $@ $^
+{/if}
 
 obj/test.o: test.c lib/yarn.h system/alloc.h lib/config.h
 	$(CC) $(TEST_CFLAGS) -c -o $@ $<
