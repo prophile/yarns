@@ -1,6 +1,5 @@
 Need to:
 
-* port and test on linux
 * more sync primitives between yarns (condition, semaphore?)
 * establish front API
 * implement API for blocks

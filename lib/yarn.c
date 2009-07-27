@@ -1,5 +1,5 @@
 #include "yarn.h"
-#define _XOPEN_SOURCE
+//#define _XOPEN_SOURCE
 #include <ucontext.h>
 #include <stdlib.h>
 #include "smp_scheduler.h"

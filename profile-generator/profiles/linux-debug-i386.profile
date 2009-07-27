@@ -4,5 +4,5 @@ cc = gcc
 cxx = g++
 lib_cflags = -O0 -g -Wall
 bin_cflags = -O0 -g -Wall
-ldflags = -L.
+ldflags = -L. -lpthread
 lto = 0
