@@ -96,19 +96,21 @@ static void yarn_launcher ( yarn* active_yarn, void (*routine)(void*), void* uda
 
 static void* allocate_stack ( ucontext_t* ctx )
 {
+	void* ptr = page_allocate(STACK_SIZE, 0, PAGE_READ | PAGE_WRITE);
 	ctx->uc_stack.ss_size = STACK_SIZE;
-	ctx->uc_stack.ss_sp = page_allocate(STACK_SIZE, 0, PAGE_READ | PAGE_WRITE);
+	ctx->uc_stack.ss_sp = ptr;
 	assert(ctx->uc_stack.ss_sp);
 	ctx->uc_stack.ss_flags = 0;
-	yarn_check_stack(ctx->uc_stack.ss_sp);
-	DEBUG("allocated a stack at %p\n", ctx->uc_stack.ss_sp);
-	return ctx->uc_stack.ss_sp;
+	yarn_check_stack(ptr);
+	DEBUG("allocated a stack at %p\n", ptr);
+	return ptr;
 }
 
 static void deallocate_stack ( void* stackbase )
 {
-	DEBUG("deallocated a stack at %p\n", stackbase);
-	page_deallocate(stackbase, STACK_SIZE);
+	unsigned char* sb = (unsigned char*)stackbase;
+	DEBUG("deallocated a stack at %p\n", sb);
+	page_deallocate(sb, STACK_SIZE);
 }
 
 volatile int __make_trap = 1; // this traps the odd situation where makecontext doesn't work and we get random code jumping in here
@@ -257,7 +259,7 @@ static void yarn_processor ( unsigned long procID )
 		// if we're unscheduling, yfree up memory
 		if (TTD.runtime_remaining == SCHEDULER_UNSCHEDULE)
 		{
-			deallocate_stack(&(TTD.yarn_current->stackBase));
+			deallocate_stack(TTD.yarn_current->stackBase);
 			yfree(TTD.yarn_current);
 		}
 		deadSleepTime = YARNS_DEAD_SLEEP_TIME;
