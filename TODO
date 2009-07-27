@@ -1,6 +1,5 @@
 Need to:
 
-* implement improved configuration system
 * port and test on linux
 * more sync primitives between yarns (condition, semaphore?)
 * establish front API
