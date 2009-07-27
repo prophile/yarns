@@ -4,6 +4,7 @@
 #include "debug.h"
 #include "lock.h"
 #include <string.h>
+#include <stdbool.h>
 
 #ifndef YARNS_USE_SYSTEM_ALLOCATOR
 
@@ -30,6 +31,8 @@ struct _little_page_info
 	unsigned long remainingLen;
 	unsigned char* nextbase;
 };
+
+static bool isReady;
 
 #define BIG_BOOK_HASH_SIZE 256
 
@@ -112,7 +115,7 @@ static void little_free ( void* ptr )
 	lock_unlock(&little_lock);
 }
 
-void yallocinit ()
+static void yallocinit ()
 {
 	int i;
 	for (i = 0; i < BIG_BOOK_HASH_SIZE; i++)
@@ -123,6 +126,7 @@ void yallocinit ()
 	}
 	lock_init(&big_lock);
 	lock_init(&little_lock);
+	isReady = 1;
 }
 
 static void bigbook_insert ( unsigned long lptr, unsigned long len )
@@ -186,6 +190,8 @@ void* yalloc ( unsigned long len )
 {
 	void* ptr;
 	unsigned long lptr;
+	if (!isReady)
+		yallocinit();
 	if (len > 2048)
 	{
 		len += 4095;

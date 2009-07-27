@@ -7,13 +7,11 @@
 
 #include <stdlib.h>
 
-#define yallocinit()
 #define yalloc(l) calloc(1,l)
 #define yfree free
 
 #else
 
-void yallocinit ();
 void* yalloc ( unsigned long len ) __attribute__((malloc));
 void yfree ( void* ptr );
 

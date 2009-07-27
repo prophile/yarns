@@ -42,7 +42,6 @@ int main ( int argc, char** argv )
 {
 	int i;
 	srand(time(NULL));
-	yallocinit();
 	yarn_lock_init(&yl);
 	//stress_test_big_allocator();
 	for (i = 0; i < 5; i++)
