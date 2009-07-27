@@ -32,6 +32,8 @@ function add_profile ( &$profile, $name )
 		$profile->addConfig($name);
 	elseif (file_exists($profile_dir . "/$name.profile"))
 		$profile->addConfig($profile_dir . "/$name.profile");
+	elseif (preg_match('/([a-zA-Z0-9_]+)=(.+)/', $name, $matches))
+		$profile->addVariable($matches[1], $matches[2]);
 	else
 		echo "unknown profile: $name\n";
 }

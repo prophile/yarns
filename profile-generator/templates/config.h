@@ -12,7 +12,7 @@
 #define YARNS_SCHED_RANDOM 3
 #define YARNS_SCHED_RB 4
 #define YARNS_SCHED_STAIRCASE 5
-#define YARNS_SCHEDULER {$scheduler}
+#define YARNS_SCHEDULER YARNS_SCHED_{$scheduler}
 // in µs
 #define YARNS_TIMESLICE {$timeslice}
 
@@ -20,7 +20,7 @@
 #define YARNS_SYNERGY_COOPERATIVE 1
 #define YARNS_SYNERGY_MARKED 2
 #define YARNS_SYNERGY_PREEMPTIVE 3
-#define YARNS_SYNERGY {$synergy}
+#define YARNS_SYNERGY YARNS_SYNERGY_{$synergy}
 
 // memory allocation and control
 {if $memory_access_control}#define YARNS_MEMORY_ACCESS_CONTROL{/if}
@@ -29,7 +29,7 @@
 // target
 #define YARNS_TARGET_MACH 1
 #define YARNS_TARGET_LINUX 2
-#define YARNS_SELECTED_TARGET {$target}
+#define YARNS_SELECTED_TARGET YARNS_TARGET_{$target}
 
 // maxima
 #define YARNS_MAX_PROCESSES {$max_processes}

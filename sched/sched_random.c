@@ -92,10 +92,11 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 	{
 		job->pid = selectedList->jobs[--selectedList->n];
 		job->runtime = YARNS_TIMESLICE;
+		job->priority = SCHED_PRIO_NORMAL;
 	}
 	if (shouldReschedule)
 	{
-		scheduler_insert(sched, oldpid);
+		scheduler_insert(sched, oldpid, SCHED_PRIO_NORMAL);
 	}
 }
 
