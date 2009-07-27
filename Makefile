@@ -1,56 +1,57 @@
 CC=clang
 CXX=llvm-g++
 ARCH=i386
-CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH)
-#CFLAGS=-O3 -DNDEBUG -pipe -arch $(ARCH)
+INCLUDES=-Idata -Iinclude/yarns -Ilib -Isched -Isystem
+CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH) $(INCLUDES)
+#CFLAGS=-O3 -DNDEBUG -pipe -arch $(ARCH) $(INCLUDES)
 LDFLAGS=-L. -arch $(ARCH)
 AR=ar
 #AR=llvm-ar
 
-test: test.o libyarns.a
+test: obj/test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
 	
-libyarns.a: pages.o sched_multilevel.o sched_roundrobin.o yarn.o smp_scheduler.o sched_random.o sched_staircase.o alloc.o rbtree.o sched_rb.o preempt.o queue.o
+libyarns.a: obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/preempt.o obj/queue.o
 	$(AR) rcs $@ $^
 
-test.o: test.c yarn.h alloc.h config.h
+obj/test.o: test.c lib/yarn.h system/alloc.h lib/config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-pages.o: pages.c pages.h config.h debug.h
+obj/pages.o: system/pages.c system/pages.h lib/config.h lib/debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-sched_multilevel.o: sched_multilevel.c config.h scheduler.h debug.h
+obj/sched_multilevel.o: sched/sched_multilevel.c lib/config.h sched/scheduler.h lib/debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-sched_roundrobin.o: sched_roundrobin.c config.h scheduler.h debug.h
+obj/sched_roundrobin.o: sched/sched_roundrobin.c lib/config.h sched/scheduler.h lib/debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-sched_random.o: sched_random.c config.h scheduler.h debug.h
+obj/sched_random.o: sched/sched_random.c lib/config.h sched/scheduler.h lib/debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-sched_rb.o: sched_rb.c scheduler.h alloc.h debug.h rbtree.h config.h
+obj/sched_rb.o: sched/sched_rb.c sched/scheduler.h system/alloc.h lib/debug.h data/rbtree.h lib/config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-sched_staircase.o: sched_staircase.c scheduler.h alloc.h queue.h debug.h config.h
+obj/sched_staircase.o: sched/sched_staircase.c sched/scheduler.h system/alloc.h data/queue.h lib/debug.h lib/config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-yarn.o: yarn.c yarn.h smp_scheduler.h config.h scheduler.h pages.h alloc.h debug.h
+obj/yarn.o: lib/yarn.c lib/yarn.h sched/smp_scheduler.h lib/config.h sched/scheduler.h system/pages.h system/alloc.h lib/debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-smp_scheduler.o: smp_scheduler.c smp_scheduler.h scheduler.h config.h lock.h atomic.h debug.h
+obj/smp_scheduler.o: sched/smp_scheduler.c sched/smp_scheduler.h sched/scheduler.h lib/config.h system/lock.h system/atomic.h lib/debug.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-alloc.o: alloc.c alloc.h pages.h debug.h config.h
+obj/alloc.o: system/alloc.c system/alloc.h system/pages.h lib/debug.h lib/config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-rbtree.o: rbtree.cpp rbtree.h alloc.h
+obj/rbtree.o: data/rbtree.cpp data/rbtree.h system/alloc.h
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-preempt.o: preempt.c preempt.h rbtree.h lock.h atomic.h
+obj/preempt.o: system/preempt.c system/preempt.h data/rbtree.h system/lock.h system/atomic.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-queue.o: queue.c queue.h alloc.h
+obj/queue.o: data/queue.c data/queue.h system/alloc.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f *.o test libyarns.a
+	rm -f obj/*.o test libyarns.a
