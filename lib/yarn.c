@@ -32,6 +32,7 @@ struct _yarn
 {
 	ucontext_t context;
 	unsigned long pid;
+	void* stackBase;
 };
 
 static yarn* process_table[YARNS_MAX_PROCESSES] = { 0 };
@@ -93,21 +94,24 @@ static void yarn_launcher ( yarn* active_yarn, void (*routine)(void*), void* uda
 	setcontext(&(TTD.sched_context));
 }
 
-static void allocate_stack ( ucontext_t* ctx )
+static void* allocate_stack ( ucontext_t* ctx )
 {
 	ctx->uc_stack.ss_size = STACK_SIZE;
 	ctx->uc_stack.ss_sp = page_allocate(STACK_SIZE, 0, PAGE_READ | PAGE_WRITE);
 	assert(ctx->uc_stack.ss_sp);
 	ctx->uc_stack.ss_flags = 0;
 	yarn_check_stack(ctx->uc_stack.ss_sp);
+	DEBUG("allocated a stack at %p\n", ctx->uc_stack.ss_sp);
+	return ctx->uc_stack.ss_sp;
 }
 
-static void deallocate_stack ( ucontext_t* ctx )
+static void deallocate_stack ( void* stackbase )
 {
-	page_deallocate(ctx->uc_stack.ss_sp, STACK_SIZE);
+	DEBUG("deallocated a stack at %p\n", stackbase);
+	page_deallocate(stackbase, STACK_SIZE);
 }
 
-int __make_trap = 1; // this traps the odd situation where makecontext doesn't work and we get random code jumping in here
+volatile int __make_trap = 1; // this traps the odd situation where makecontext doesn't work and we get random code jumping in here
 
 static yarn_t list_insert ( yarn* active_yarn )
 {
@@ -158,7 +162,7 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 	// prepare the context
 	fetch_context(&active_yarn->context);
 	// set up stack and such
-	allocate_stack(&(active_yarn->context));
+	active_yarn->stackBase = allocate_stack(&(active_yarn->context));
 	// run makecontext to direct it over to the bootstrap
 	prepare_context(active_yarn, routine, udata);
 	// insert it into the yarn list
@@ -196,6 +200,7 @@ static void yarn_processor ( unsigned long procID )
 {
 	// this is the main routine run by each thread
 	struct sigaction sa;
+	void* stackRoot;
 	volatile int breakProcessor = 0;
 	int rc;
 	unsigned deadSleepTime = YARNS_DEAD_SLEEP_TIME;
@@ -206,7 +211,7 @@ static void yarn_processor ( unsigned long procID )
 	// repeatedly ask the scheduler for the next job
 	scheduler_job activeJob;
 #ifdef BASE_CONTEXT_NEEDS_STACK
-	allocate_stack(&(TTD.sched_context));
+	stackRoot = allocate_stack(&(TTD.sched_context));
 #endif
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 	sa.sa_sigaction = (void (*)(int, struct __siginfo *, void *))preempt_signal_handler;
@@ -252,12 +257,14 @@ static void yarn_processor ( unsigned long procID )
 		// if we're unscheduling, yfree up memory
 		if (TTD.runtime_remaining == SCHEDULER_UNSCHEDULE)
 		{
-			deallocate_stack(&(TTD.yarn_current->context));
+			deallocate_stack(&(TTD.yarn_current->stackBase));
 			yfree(TTD.yarn_current);
 		}
 		deadSleepTime = YARNS_DEAD_SLEEP_TIME;
 	}
-	deallocate_stack(&(TTD.sched_context));
+#ifdef BASE_CONTEXT_NEEDS_STACK
+	deallocate_stack(stackRoot);
+#endif
 }
 
 // number of parallel processing cores, for the moment assume 2

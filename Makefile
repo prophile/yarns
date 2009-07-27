@@ -3,9 +3,9 @@ CXX=llvm-g++
 ARCH=i386
 INCLUDES=-Idata -Iinclude/yarns -Ilib -Isched -Isystem
 # DEBUG
-#CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH) $(INCLUDES)
+CFLAGS=-O0 -gfull -pipe -Wall -arch $(ARCH) $(INCLUDES)
 # RELEASE
-CFLAGS=-O4 -DNDEBUG -pipe -arch $(ARCH) $(INCLUDES)
+#CFLAGS=-O4 -DNDEBUG -pipe -arch $(ARCH) $(INCLUDES)
 # END
 TEST_CFLAGS=-arch $(ARCH) $(INCLUDES)
 LDFLAGS=-L. -arch $(ARCH)
@@ -16,21 +16,21 @@ test: obj/test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 # DEBUG
-#libyarns.a: $(OBJECTS)
-#	ar rcs $@ $^
-
-# RELEASE
-libyarns.a: obj/libyarns.o
+libyarns.a: $(OBJECTS)
 	ar rcs $@ $^
 
-obj/libyarns.o: obj/libyarns.s
-	as -arch $(ARCH) -o $@ $<
-
-obj/libyarns.s: obj/libyarns.bc
-	llc -f -o $@ $<
-
-obj/libyarns.bc: $(OBJECTS)
-	llvm-ld -internalize-public-api-file=exports.txt -link-as-library -o $@ $^
+# RELEASE
+#libyarns.a: obj/libyarns.o
+#	ar rcs $@ $^
+#
+#obj/libyarns.o: obj/libyarns.s
+#	as -arch $(ARCH) -o $@ $<
+#
+#obj/libyarns.s: obj/libyarns.bc
+#	llc -f -o $@ $<
+#
+#obj/libyarns.bc: $(OBJECTS)
+#	llvm-ld -internalize-public-api-file=exports.txt -link-as-library -o $@ $^
 # END
 
 obj/test.o: test.c lib/yarn.h system/alloc.h lib/config.h

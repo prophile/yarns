@@ -24,7 +24,7 @@
 
 // memory allocation and control
 //#define YARNS_MEMORY_ACCESS_CONTROL
-//#define YARNS_USE_SYSTEM_ALLOCATOR
+#define YARNS_USE_SYSTEM_ALLOCATOR
 
 // target
 #define YARNS_TARGET_MACH 1
