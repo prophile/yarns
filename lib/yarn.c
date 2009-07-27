@@ -43,7 +43,8 @@ typedef struct _yarn_thread_data
 {
 	ucontext_t sched_context;
 	yarn* yarn_current;
-	unsigned long runtime_remaining;
+	unsigned long start_time;
+	unsigned long runtime;
 } yarn_thread_data;
 #ifdef YARNS_ENABLE_SMP
 pthread_key_t _ttd;
@@ -59,14 +60,14 @@ static void TTDINIT()
 {
 	yarn_thread_data* ttd = (yarn_thread_data*)yalloc(sizeof(yarn_thread_data));
 	ttd->yarn_current = NULL;
-	ttd->runtime_remaining = 0;
+	ttd->runtime = 0;
 	pthread_setspecific(_ttd, ttd);
 }
 #else
 static yarn_thread_data _ttd;
 #define TTD _ttd
 #define TTDINIT_MAIN() {}
-#define TTDINIT() { _ttd.yarn_current = 0; _ttd.runtime_remaining = 0; }
+#define TTDINIT() { _ttd.yarn_current = 0; _ttd.runtime = 0; }
 #endif
 
 #if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
@@ -89,7 +90,7 @@ static void yarn_launcher ( yarn* active_yarn, void (*routine)(void*), void* uda
 	// basically a bootstrap routine for each yarn which runs the routine then cleans up
 	routine(udata);
 	DEBUG("yarn %p completed, setcontext\n", active_yarn);
-	TTD.runtime_remaining = SCHEDULER_UNSCHEDULE;
+	TTD.runtime = SCHEDULER_UNSCHEDULE;
 	process_table[active_yarn->pid] = 0;
 	setcontext(&(TTD.sched_context));
 }
@@ -177,7 +178,7 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 void yarn_yield ( yarn_t target )
 {
 	// ignore target for now
-	TTD.runtime_remaining = 1;
+	TTD.runtime = 1;
 	// pop back over to the scheduler
 	DEBUG("swapcontext in yield\n");
 	swapcontext(&(TTD.yarn_current->context), &(TTD.sched_context));
@@ -193,7 +194,7 @@ static void preempt_signal_handler ( int sig, struct __siginfo* info, ucontext_t
 {
 	assert(sig == SIGUSR2);
 	memcpy(TTD.yarn_current->context.uc_mcontext, context->uc_mcontext, context->uc_mcsize);
-	TTD.runtime_remaining = 0;
+	TTD.runtime = 0;
 	setcontext(&(TTD.sched_context));
 }
 #endif
@@ -241,6 +242,7 @@ static void yarn_processor ( unsigned long procID )
 		assert(process_table[activeJob.pid]);
 		// set all the stuff up
 		TTD.yarn_current = process_table[activeJob.pid];
+		TTD.start_time = preempt_time();
 		// swap contexts
 		DEBUG("swapcontext to yarn\n");
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
@@ -255,9 +257,9 @@ static void yarn_processor ( unsigned long procID )
 		if (rc == -1)
 			perror("swapcontext failed");
 		// set the runtime
-		activeJob.runtime = TTD.runtime_remaining;
+		activeJob.runtime = TTD.runtime;
 		// if we're unscheduling, yfree up memory
-		if (TTD.runtime_remaining == SCHEDULER_UNSCHEDULE)
+		if (TTD.runtime == SCHEDULER_UNSCHEDULE)
 		{
 			deallocate_stack(TTD.yarn_current->stackBase);
 			yfree(TTD.yarn_current);
@@ -336,7 +338,11 @@ void yarn_process ()
 #if YARNS_SYNERGY == YARNS_SYNERGY_MARKED
 void yarn_mark ()
 {
-#error Marked synergy is not yet implemented.
-#error Please try cooperative or preemptive.
+	unsigned long t = preempt_time();
+	unsigned long dt = TTD.start_time - t;
+	if (dt > TTD.runtime)
+	{
+		yarn_yield(0);
+	}
 }
 #endif
