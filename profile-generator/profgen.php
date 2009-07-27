@@ -11,6 +11,19 @@ require('profile-generator.php');
 $profiles = $argv;
 array_shift($profiles);
 array_unshift($profiles, 'default');
+if (count($profiles) == 1)
+{
+	echo "Usage: " . $argv[0] . " profile [profile]\n";
+	echo "Built-in profiles:\n";
+	$contents = scandir($profile_dir);
+	foreach ($contents as $item)
+	{
+		$item = str_replace(".profile", "", $item);
+		if ($item != 'default' && $item[0] != '.')
+			echo "\t$item\n";
+	}
+	exit(0);
+}
 
 function add_profile ( &$profile, $name )
 {
@@ -32,4 +45,6 @@ $makefile = new profile($template_dir . '/Makefile');
 foreach ($profiles as $prof)
 	add_profile($makefile, $prof);
 file_put_contents("$base_dir/Makefile", $makefile->generate());
+
+echo "Built configuration from profiles: " . implode(', ', $profiles) . "\n";
 
