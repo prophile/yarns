@@ -3,3 +3,17 @@ yarn_yield
 yarn_process
 yarn_current
 yarn_mark
+yarn_lock_init
+yarn_lock_lock
+yarn_lock_unlock
+yarn_rwlock_init
+yarn_rwlock_read_lock
+yarn_rwlock_read_unlock
+yarn_rwlock_write_lock
+yarn_rwlock_write_unlock
+yarns_atomic_queue_new
+yarns_atomic_queue_delete
+yarns_atomic_queue_push
+yarns_atomic_queue_push_integer
+yarns_atomic_queue_pop
+yarns_atomic_queue_pop_integer

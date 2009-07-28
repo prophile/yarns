@@ -67,7 +67,7 @@ obj/preempt.o: system/preempt.c system/preempt.h data/rbtree.h system/lock.h sys
 obj/queue.o: data/queue.c data/queue.h system/alloc.h lib/config.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-obj/queue_atomic.o: data/queue_atomic.c data/queue_atomic.h system/alloc.h system/atomic.h lib/config.h Makefile
+obj/queue_atomic.o: data/queue_atomic.c include/yarns/queue_atomic.h system/alloc.h system/atomic.h lib/config.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
