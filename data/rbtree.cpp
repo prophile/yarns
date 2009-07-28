@@ -70,7 +70,7 @@ public:
 	void destroy ( pointer p ) {}
 };
 
-typedef map<unsigned long, void*, less<unsigned long>, yallocator<std::pair<const unsigned long, void*> > > rtree;
+typedef map<unsigned long, void*, less<unsigned long>/*, yallocator<std::pair<const unsigned long, void*> > */> rtree;
 
 struct _rbtree
 {
@@ -99,11 +99,13 @@ void rbtree_free ( rbtree* tree )
 
 void rbtree_insert ( rbtree* tree, unsigned long key, void* value )
 {
-	tree->tree[key] = value;
+	//printf("tree %p got given key %lu value %p\n", tree, key, value);
+	tree->tree.insert(std::make_pair(key, value));
 }
 
 void rbtree_remove ( rbtree* tree, unsigned long key )
 {
+	//printf("tree %p having key %lu removed\n", tree, key);
 	rtree::iterator iter = tree->tree.find(key);
 	if (iter != tree->tree.end())
 		tree->tree.erase(iter);
@@ -114,11 +116,16 @@ bool rbtree_search ( rbtree* tree, unsigned long key, void** value )
 	rtree::iterator iter = tree->tree.find(key);
 	if (iter != tree->tree.end())
 	{
-		*value = iter->second;
+		if (value)
+		{
+			*value = iter->second;
+		}
+		//printf("tree %p does contain key %lu\n", tree, key);
 		return true;
 	}
 	else
 	{
+		//printf("tree %p does not contain key %lu\n", tree, key);
 		return false;
 	}
 }

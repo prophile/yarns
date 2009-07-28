@@ -12,6 +12,7 @@
 #define YARNS_SCHED_RANDOM 3
 #define YARNS_SCHED_RB 4
 #define YARNS_SCHED_STAIRCASE 5
+#define YARNS_SCHED_FAIR 6
 #define YARNS_SCHEDULER YARNS_SCHED_{$scheduler}
 // in µs
 #define YARNS_TIMESLICE {$timeslice}

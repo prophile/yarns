@@ -5,7 +5,7 @@ CFLAGS={$lib_cflags} $(INCLUDES)
 TEST_CFLAGS={$bin_cflags} $(INCLUDES)
 LDFLAGS={$ldflags}
 
-OBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/preempt.o obj/queue.o obj/queue_atomic.o
+OBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o
 
 test: obj/test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
@@ -47,6 +47,9 @@ obj/sched_rb.o: sched/sched_rb.c sched/scheduler.h system/alloc.h lib/debug.h da
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 obj/sched_staircase.o: sched/sched_staircase.c sched/scheduler.h system/alloc.h data/queue.h lib/debug.h lib/config.h Makefile
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+obj/sched_fair.o: sched/sched_fair.c sched/scheduler.h system/alloc.h data/rbtree.h lib/debug.h lib/config.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 obj/yarn.o: lib/yarn.c lib/yarn.h sched/smp_scheduler.h lib/config.h sched/scheduler.h system/pages.h system/alloc.h lib/debug.h Makefile

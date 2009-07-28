@@ -12,7 +12,7 @@ void rbtree_insert ( rbtree* tree, unsigned long key, void* value );
 void rbtree_remove ( rbtree* tree, unsigned long key );
 bool rbtree_search ( rbtree* tree, unsigned long key, void** value );
 unsigned long rbtree_size ( rbtree* tree );
-inline bool rbtree_empty ( rbtree* tree )
+inline static bool rbtree_empty ( rbtree* tree )
 	{ return rbtree_size(tree) == 0; }
 unsigned long rbtree_min ( rbtree* tree );
 unsigned long rbtree_max ( rbtree* tree );
