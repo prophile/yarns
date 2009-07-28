@@ -5,3 +5,4 @@ Need to:
 * implement API for blocks
 * re-implement all ucontext API for PowerPC/i386
 * rewrite profile generation in Python
+* implement atomic queue
