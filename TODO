@@ -3,6 +3,5 @@ Need to:
 * more sync primitives between yarns (condition, semaphore?)
 * establish front API
 * implement API for blocks
-* bitch to Apple wrt 64-bit ucontext functions
-* figure out how to lie to makecontext about stack size
-* implement priority in yarns
+* re-implement all ucontext API for PowerPC/i386
+* rewrite profile generation in Python

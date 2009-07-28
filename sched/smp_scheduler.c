@@ -151,6 +151,11 @@ void smp_sched_select ( unsigned long core, scheduler_job* job )
 		job->data = 0;
 		job->priority = SCHED_PRIO_TITANIC;
 	}
+	if (job->pid != 0 && job->runtime == SCHEDULER_UNSCHEDULE)
+	{
+		DEBUG("unscheduled job %lu for core %lu\n", job->pid, core);
+		jobcounts[core]--;
+	}
 	doselect(c, job);
 	if (job->pid == 0)
 	{
@@ -168,7 +173,7 @@ void smp_sched_select ( unsigned long core, scheduler_job* job )
 	}
 	else
 	{
-		DEBUG("got job %lu for core %lu\n", job->pid, core);
+		//DEBUG("got job %lu for core %lu\n", job->pid, core);
 	}
 	if (job->pid == 0)
 	{
