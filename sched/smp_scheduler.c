@@ -68,7 +68,7 @@ static unsigned long select_core_least_load ()
 		}
 	}
 	assert(minVal != ~0UL); // this makes very little sense
-	last_min_cd = 3;
+	last_min_cd = 2;
 	last_min = min;
 	return min;
 }

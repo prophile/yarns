@@ -4,6 +4,5 @@ Need to:
 * establish front API
 * implement API for blocks
 * bitch to Apple wrt 64-bit ucontext functions
-* implement hand-over yielding
 * figure out how to lie to makecontext about stack size
 * implement priority in yarns

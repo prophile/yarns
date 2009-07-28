@@ -1,10 +1,12 @@
 #include "yarn.h"
-//#define _XOPEN_SOURCE
+#include "config.h"
+#if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
+#define _XOPEN_SOURCE
+#endif
 #include <ucontext.h>
 #include <stdlib.h>
 #include "smp_scheduler.h"
 #include <assert.h>
-#include "config.h"
 #include <stdio.h>
 #include "pages.h"
 #include <signal.h>
@@ -45,6 +47,7 @@ typedef struct _yarn_thread_data
 	yarn* yarn_current;
 	unsigned long start_time;
 	unsigned long runtime;
+	yarn_t next;
 } yarn_thread_data;
 #ifdef YARNS_ENABLE_SMP
 pthread_key_t _ttd;
@@ -175,13 +178,20 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 	return pid;
 }
 
+static void yarn_switch ( unsigned long runtime, yarn_t target )
+{
+	TTD.runtime = runtime;
+	TTD.next = target;
+	DEBUG("swapcontext in switch\n");
+	swapcontext(&(TTD.yarn_current->context), &(TTD.sched_context));
+}
+
 void yarn_yield ( yarn_t target )
 {
 	// ignore target for now
-	TTD.runtime = 1;
-	// pop back over to the scheduler
-	DEBUG("swapcontext in yield\n");
-	swapcontext(&(TTD.yarn_current->context), &(TTD.sched_context));
+	unsigned long t = preempt_time();
+	unsigned long dt = TTD.start_time - t;
+	yarn_switch(TTD.runtime - dt, target);
 }
 
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
@@ -227,6 +237,7 @@ static void yarn_processor ( unsigned long procID )
 	activeJob.pid = 0;
 	activeJob.runtime = 0;
 	activeJob.data = 0;
+	activeJob.next = 0;
 	activeJob.priority = SCHED_PRIO_NORMAL;
 	while (!breakProcessor)
 	{
@@ -243,8 +254,9 @@ static void yarn_processor ( unsigned long procID )
 		// set all the stuff up
 		TTD.yarn_current = process_table[activeJob.pid];
 		TTD.start_time = preempt_time();
+		TTD.next = 0;
 		// swap contexts
-		DEBUG("swapcontext to yarn\n");
+		DEBUG("swapcontext to yarn: %p\n", TTD.yarn_current);
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 		preempt(preempt_time() + activeJob.runtime, procID);
 		preempt_enable();
@@ -253,6 +265,7 @@ static void yarn_processor ( unsigned long procID )
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 		preempt_disable();
 #endif
+		activeJob.next = TTD.next;
 		// check it actually worked
 		if (rc == -1)
 			perror("swapcontext failed");
@@ -342,7 +355,7 @@ void yarn_mark ()
 	unsigned long dt = TTD.start_time - t;
 	if (dt > TTD.runtime)
 	{
-		yarn_yield(0);
+		yarn_switch(0, 0);
 	}
 }
 #endif

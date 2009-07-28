@@ -11,7 +11,7 @@
 
 #define DEBUG_EVERYTHING ~0
 
-#define DEBUG_WHAT 0
+#define DEBUG_WHAT DEBUG_EVERYTHING
 
 #define DEBUG(format, args...) if (DEBUG_MODULE & (DEBUG_WHAT)) { fprintf(stderr, format , ## args); }
 
