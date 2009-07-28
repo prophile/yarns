@@ -38,14 +38,14 @@ unsigned long preempt_time ( void )
 	unsigned long t;
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	t = tv.tv_usec + (tv.tv_sec * 1000000);
+	t = (tv.tv_usec / 1000) + (tv.tv_sec * 1000);
 	return t;
 }
 
 static inline void convert ( struct timeval* tv, unsigned long t )
 {
-	tv->tv_sec  = t / 1000000;
-	tv->tv_usec = t % 1000000;
+	tv->tv_sec  = t / 1000;
+	tv->tv_usec = (t * 1000) % 1000000;
 }
 
 static void reconfigure_timer ( void )
