@@ -30,23 +30,45 @@ function add_profile ( &$profile, $name )
 	global $profile_dir;
 	if (file_exists($name))
 		$profile->addConfig($name);
-	elseif (file_exists($profile_dir . "/$name.profile"))
-		$profile->addConfig($profile_dir . "/$name.profile");
+	elseif (file_exists("$profile_dir/$name.profile"))
+		$profile->addConfig("$profile_dir/$name.profile");
 	elseif (preg_match('/([a-zA-Z0-9_]+)=(.+)/', $name, $matches))
 		$profile->addVariable($matches[1], $matches[2]);
 	else
-		echo "unknown profile: $name\n";
+	{
+		$fname = trim(strtolower(`uname -s`)) . "-$name-" . trim(`uname -m`);
+		if (file_exists("$profile_dir/$fname.profile"))
+			$profile->addConfig("$profile_dir/$fname.profile");
+		else
+			echo "unknown profile: $name / $fname\n";
+	}
+}
+
+function writeout ( $data, $file )
+{
+	$md5d = md5($data);
+	$md5f = md5_file($file);
+	$bf = basename($file);
+	if ($md5d == $md5f)
+	{
+		echo "$bf unchanged\n";
+	}
+	else
+	{
+		file_put_contents($file, $data);
+		echo "wrote new $bf\n";
+	}
 }
 
 $config = new profile($template_dir . '/config.h');
 foreach ($profiles as $prof)
 	add_profile($config, $prof);
-file_put_contents("$base_dir/lib/config.h", $config->generate());
+writeout($config->generate(), "$base_dir/lib/config.h");
 
 $makefile = new profile($template_dir . '/Makefile');
 foreach ($profiles as $prof)
 	add_profile($makefile, $prof);
-file_put_contents("$base_dir/Makefile", $makefile->generate());
+writeout($makefile->generate(), "$base_dir/Makefile");
 
 echo "Built configuration from profiles: " . implode(', ', $profiles) . "\n";
 
