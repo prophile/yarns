@@ -34,6 +34,7 @@ struct _yarn
 {
 	ucontext_t context;
 	unsigned long pid;
+	int nice;
 	void* stackBase;
 };
 
@@ -119,13 +120,14 @@ static void deallocate_stack ( void* stackbase )
 
 volatile int __make_trap = 1; // this traps the odd situation where makecontext doesn't work and we get random code jumping in here
 
-static yarn_t list_insert ( yarn* active_yarn )
+static yarn_t list_insert ( yarn* active_yarn, int nice )
 {
 	yarn_t pid = maxpid++;
 	DEBUG("pid(%d)=yarn(%p)\n", pid, active_yarn);
 	assert(maxpid < YARNS_MAX_PROCESSES);
 	process_table[pid] = active_yarn;
 	active_yarn->pid = pid;
+	active_yarn->nice = nice;
 	return pid;
 }
 
@@ -157,7 +159,57 @@ yarn_t yarn_current ( void )
 	return TTD.yarn_current->pid;
 }
 
-yarn_t yarn_new ( void (*routine)(void*), void* udata )
+static scheduler_priority prio_lookup ( int nice )
+{
+	if (nice > 20) nice = 20;
+	if (nice < -20) nice = -20;
+	switch (nice)
+	{
+		case -20: return SCHED_PRIO_TITANIC;
+		case -19: return SCHED_PRIO_VERY_HIGH;
+		case -18: return SCHED_PRIO_VERY_HIGH;
+		case -17: return SCHED_PRIO_VERY_HIGH;
+		case -16: return SCHED_PRIO_VERY_HIGH;
+		case -15: return SCHED_PRIO_VERY_HIGH;
+		case -14: return SCHED_PRIO_VERY_HIGH;
+		case -13: return SCHED_PRIO_VERY_HIGH;
+		case -12: return SCHED_PRIO_VERY_HIGH;
+		case -11: return SCHED_PRIO_HIGH;
+		case -10: return SCHED_PRIO_HIGH;
+		case -9:  return SCHED_PRIO_HIGH;
+		case -8:  return SCHED_PRIO_HIGH;
+		case -7:  return SCHED_PRIO_HIGH;
+		case -6:  return SCHED_PRIO_HIGH;
+		case -5:  return SCHED_PRIO_HIGH;
+		case -4:  return SCHED_PRIO_HIGH;
+		case -3:  return SCHED_PRIO_NORMAL;
+		case -2:  return SCHED_PRIO_NORMAL;
+		case -1:  return SCHED_PRIO_NORMAL;
+		case 0:   return SCHED_PRIO_NORMAL;
+		case 1:   return SCHED_PRIO_NORMAL;
+		case 2:   return SCHED_PRIO_NORMAL;
+		case 3:   return SCHED_PRIO_NORMAL;
+		case 4:   return SCHED_PRIO_LOW;
+		case 5:   return SCHED_PRIO_LOW;
+		case 6:   return SCHED_PRIO_LOW;
+		case 7:   return SCHED_PRIO_LOW;
+		case 8:   return SCHED_PRIO_LOW;
+		case 9:   return SCHED_PRIO_LOW;
+		case 10:  return SCHED_PRIO_LOW;
+		case 11:  return SCHED_PRIO_LOW;
+		case 12:  return SCHED_PRIO_LOW;
+		case 13:  return SCHED_PRIO_LOW;
+		case 14:  return SCHED_PRIO_LOW;
+		case 15:  return SCHED_PRIO_VERY_LOW;
+		case 16:  return SCHED_PRIO_VERY_LOW;
+		case 17:  return SCHED_PRIO_VERY_LOW;
+		case 18:  return SCHED_PRIO_VERY_LOW;
+		case 19:  return SCHED_PRIO_VERY_LOW;
+		case 20:  return SCHED_PRIO_VERY_LOW;
+	}
+}
+
+yarn_t yarn_new ( void (*routine)(void*), void* udata, int nice )
 {
 	// grab memory
 	yarn* active_yarn;
@@ -172,9 +224,9 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata )
 	// run makecontext to direct it over to the bootstrap
 	prepare_context(active_yarn, routine, udata);
 	// insert it into the yarn list
-	pid = list_insert(active_yarn);
+	pid = list_insert(active_yarn, nice);
 	if (live)
-		smp_sched_insert(pid, SCHED_PRIO_NORMAL);
+		smp_sched_insert(pid, prio_lookup(nice));
 	return pid;
 }
 
@@ -182,7 +234,7 @@ static void yarn_switch ( unsigned long runtime, yarn_t target )
 {
 	TTD.runtime = runtime;
 	TTD.next = target;
-	DEBUG("swapcontext in switch\n");
+	DEBUG("swapcontext in switch (rt=%lu, n=%lu)\n", runtime, target);
 	swapcontext(&(TTD.yarn_current->context), &(TTD.sched_context));
 }
 
@@ -330,7 +382,7 @@ void yarn_process ()
 	// set up all the yarns in the scheduler
 	for (i = 1; i < maxpid; i++)
 	{
-		smp_sched_insert(i, SCHED_PRIO_NORMAL);
+		smp_sched_insert(i, prio_lookup(process_table[i]->nice));
 	}
 	live = 1;
 #ifdef YARNS_ENABLE_SMP

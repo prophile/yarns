@@ -27,7 +27,7 @@ static void myRoutine2 ( void* param )
 
 static void yarnify ( unsigned long n )
 {
-	yarn_new ( myRoutine1, (void*)n );
+	yarn_new ( myRoutine1, (void*)n, 0 );
 }
 
 static void quit ( void* p )
@@ -47,10 +47,10 @@ int main ( int argc, char** argv )
 	for (i = 0; i < 5; i++)
 	{
 		if (i == 3)
-			yarn_new(myRoutine2, 0);
+			yarn_new(myRoutine2, 0, 0);
 		yarnify(i);
 	}
-	//yarn_new(quit, 0);
+	yarn_new(quit, 0, 14);
 	yarn_process ();
 	
 	return 0;
