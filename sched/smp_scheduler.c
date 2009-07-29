@@ -5,6 +5,7 @@
 #include "alloc.h"
 #include <assert.h>
 #include "debug.h"
+#include <stdbool.h>
 
 #ifdef YARNS_ENABLE_SMP
 
@@ -97,6 +98,41 @@ static scheduler* scheduler_for_core ( unsigned long core )
 	return schedulers[core];
 }
 
+static void job_hoist ( unsigned long src, unsigned long dst )
+{
+	scheduler_job job;
+	
+	job.pid = 0;
+	job.runtime = 0;
+	job.data = 0;
+	job.next = 0;
+	job.priority = SCHED_PRIO_NORMAL;
+	scheduler_select(schedulers[src], &job);
+	if (job.pid)
+	{
+		scheduler_insert(schedulers[dst], job.pid, job.priority);
+		job.runtime = SCHEDULER_UNSCHEDULE;
+		job.next = SCHEDULER_WANT_IDLE;
+		scheduler_select(schedulers[src], &job);
+		jobcounts[src]--;
+		jobcounts[dst]++;
+	}
+}
+
+static bool rebalance ( unsigned long target )
+{
+	unsigned long src = select_core_most_load();
+	lock_lock(locks + src);
+	lock_lock(locks + target);
+	if (jobcounts[src] > 2)
+	{
+		while (jobcounts[src] > jobcounts[target])
+			job_hoist(src, target);
+	}
+	lock_unlock(locks + src);
+	lock_unlock(locks + target);
+}
+
 void smp_sched_insert ( unsigned long pid, scheduler_priority prio )
 {
 	unsigned long target;
@@ -160,16 +196,8 @@ void smp_sched_select ( unsigned long core, scheduler_job* job )
 	if (job->pid == 0)
 	{
 		// no job found, designate this core for receiving jobs
-		c = select_core_most_load();
-		if (c != core && (jobcounts[c] - jobcounts[core]) >= 2)
-		{
-			doselect(c, job);
-			if (job->pid != 0)
-			{
-				DEBUG("stole job %lu for core %lu from core %lu\n", job->pid, core, c);
-				return;
-			}
-		}
+		rebalance(c);
+		doselect(c, job);
 	}
 	else
 	{

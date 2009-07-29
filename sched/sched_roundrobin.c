@@ -80,6 +80,12 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 	{
 		scheduler_insert(sched, job->pid, SCHED_PRIO_NORMAL);
 	}
+	if (job->next == SCHEDULER_WANT_IDLE)
+	{
+		job->pid = 0;
+		job->runtime = 0;
+		return;
+	}
 	pid = jselect(sched);
 	job->pid = pid;
 	job->runtime = pid == 0 ? YARNS_TIMESLICE : 0;

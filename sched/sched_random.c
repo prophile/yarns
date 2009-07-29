@@ -75,24 +75,32 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 	unsigned long oldpid = job->pid;
 	bool shouldReschedule = job->runtime != SCHEDULER_UNSCHEDULE;
 	scheduler_joblist* selectedList = sched->baselist;
-	if (selectedList->n == 0)
+	if (job->next == SCHEDULER_WANT_IDLE)
 	{
-		if (shouldReschedule)
-		{
-			job->runtime = YARNS_TIMESLICE;
-			return;
-		}
-		else
-		{
-			job->pid = 0;
-			job->runtime = 0;
-		}
+		job->pid = 0;
+		job->runtime = 0;
 	}
 	else
 	{
-		job->pid = selectedList->jobs[--selectedList->n];
-		job->runtime = YARNS_TIMESLICE;
-		job->priority = SCHED_PRIO_NORMAL;
+		if (selectedList->n == 0)
+		{
+			if (shouldReschedule)
+			{
+				job->runtime = YARNS_TIMESLICE;
+				return;
+			}
+			else
+			{
+				job->pid = 0;
+				job->runtime = 0;
+			}
+		}
+		else
+		{
+			job->pid = selectedList->jobs[--selectedList->n];
+			job->runtime = YARNS_TIMESLICE;
+			job->priority = SCHED_PRIO_NORMAL;
+		}
 	}
 	if (shouldReschedule)
 	{

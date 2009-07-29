@@ -102,6 +102,13 @@ static void trueselect ( scheduler* sched, scheduler_job* job, int secondary )
 			insert(sched, job->pid, 1, job->data);
 		}
 	}
+	if (job->next == SCHEDULER_WANT_IDLE)
+	{
+		job->pid = 0;
+		job->runtime = 0;
+		job->data = 0;
+		return;
+	}
 	for (i = 0; i < LAYERS; i++)
 	{
 		if (!sched->layer_heads[i])

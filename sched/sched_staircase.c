@@ -110,6 +110,13 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 			}
 		}
 	}
+	if (job->next == SCHEDULER_WANT_IDLE)
+	{
+		job->pid = 0;
+		job->runtime = 0;
+		job->data = 0;
+		return;
+	}
 	selectedLevel = 0;
 	while (selectedLevel < LAYERS)
 	{

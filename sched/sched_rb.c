@@ -61,7 +61,7 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 		runtime = totalTime;
 	}
 	sched->vtime += runtime;
-	if (minTime == ~0UL)
+	if (minTime == ~0UL || job->next == SCHEDULER_WANT_IDLE)
 	{
 		job->pid = 0;
 		job->runtime = 0;

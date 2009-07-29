@@ -16,13 +16,14 @@ typedef struct _scheduler_job
 	unsigned long pid; // 0 if no previous job, return 0 for shutdown
 	unsigned long runtime; // number of µs to run; remaining µs at end if voluntary, 0 if involuntary, SCHEDULER_UNSCHEDULE for unscheduling
 	unsigned long data; // extra data defined by scheduler, 0 by default
-	unsigned long next; // suggested next job, in only, 0 if none, feel free to ignore
+	unsigned long next; // suggested next job, in only, 0 if none, feel free to ignore; SCHEDULER_WANT_IDLE if wants no next job
 	scheduler_priority priority; // initially SCHED_PRIO_NORMAL, only for scheduler's use (ignored by rest of system)
 } scheduler_job;
 
 typedef struct _scheduler scheduler;
 
 #define SCHEDULER_UNSCHEDULE ~0UL
+#define SCHEDULER_WANT_IDLE ~0UL
 
 scheduler* scheduler_init ();
 void scheduler_free ( scheduler* sched );

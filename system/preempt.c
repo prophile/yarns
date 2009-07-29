@@ -10,6 +10,8 @@
 static volatile unsigned long preempt_disable_count = 0;
 preempt_handler preempt_handle = 0;
 
+static unsigned long preempt_initial = 0;
+
 static void preempt_signal ( int sig );
 
 void preempt_disable ()
@@ -29,6 +31,9 @@ static rbtree* preempt_schedule;
 
 void preempt_init ( void )
 {
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	preempt_initial = (tv.tv_usec / 1000) + (tv.tv_sec * 1000);
 	preempt_schedule = rbtree_new();
 	lock_init(&preempt_lock);
 }
@@ -39,7 +44,7 @@ unsigned long preempt_time ( void )
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 	t = (tv.tv_usec / 1000) + (tv.tv_sec * 1000);
-	return t;
+	return t - preempt_initial;
 }
 
 static inline void convert ( struct timeval* tv, unsigned long t )

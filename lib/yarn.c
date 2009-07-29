@@ -300,13 +300,14 @@ static void yarn_processor ( unsigned long procID )
 			deadSleepTime *= 2;
 			continue;
 		}
-		DEBUG("job %lu @ proc %d\n", activeJob.pid, (int)procID);
+		DEBUG("job %lu @ proc %d (rt: %lu us)\n", activeJob.pid, (int)procID, activeJob.runtime);
 		assert(activeJob.pid < maxpid);
 		assert(process_table[activeJob.pid]);
 		// set all the stuff up
 		TTD.yarn_current = process_table[activeJob.pid];
 		TTD.start_time = preempt_time();
 		TTD.next = 0;
+		TTD.runtime = activeJob.runtime;
 		// swap contexts
 		DEBUG("swapcontext to yarn: %p\n", TTD.yarn_current);
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
@@ -322,7 +323,7 @@ static void yarn_processor ( unsigned long procID )
 		if (rc == -1)
 			perror("swapcontext failed");
 		// set the runtime
-		activeJob.runtime = TTD.runtime;
+		activeJob.runtime = MIN(TTD.runtime, activeJob.runtime);
 		// if we're unscheduling, yfree up memory
 		if (TTD.runtime == SCHEDULER_UNSCHEDULE)
 		{
