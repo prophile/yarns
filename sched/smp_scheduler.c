@@ -101,7 +101,6 @@ static scheduler* scheduler_for_core ( unsigned long core )
 static void job_hoist ( unsigned long src, unsigned long dst )
 {
 	scheduler_job job;
-	
 	job.pid = 0;
 	job.runtime = 0;
 	job.data = 0;
