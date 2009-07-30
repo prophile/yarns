@@ -1,11 +1,11 @@
 CC={$cc}
 CXX={$cxx}
-INCLUDES=-Idata -Iinclude/yarns -Ilib -Isched -Isystem
+INCLUDES=-Idata -Iinclude/yarns -Ilib -Isched -Isystem -Icontext/{$context}
 CFLAGS={$lib_cflags} $(INCLUDES)
 TEST_CFLAGS={$bin_cflags} $(INCLUDES)
 LDFLAGS={$ldflags}
 
-OBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o
+OBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o obj/context.o
 
 test: obj/test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
@@ -71,6 +71,9 @@ obj/queue.o: data/queue.c data/queue.h system/alloc.h lib/config.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 obj/queue_atomic.o: data/queue_atomic.c include/yarns/queue_atomic.h system/alloc.h system/atomic.h lib/config.h Makefile
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+obj/context.o: context/{$context}/context.c Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:

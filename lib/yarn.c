@@ -1,9 +1,6 @@
 #include "yarn.h"
 #include "config.h"
-#if YARNS_SELECTED_TARGET == YARNS_TARGET_MACH
-#define _XOPEN_SOURCE
-#endif
-#include <ucontext.h>
+#include "context.h"
 #include <stdlib.h>
 #include "smp_scheduler.h"
 #include <assert.h>
@@ -32,7 +29,7 @@ static bool live = 0;
 
 struct _yarn
 {
-	ucontext_t context;
+	yarn_context_t context;
 	unsigned long pid;
 	int nice;
 	void* stackBase;
@@ -44,7 +41,7 @@ static pthread_t threads[32];
 
 typedef struct _yarn_thread_data
 {
-	ucontext_t sched_context;
+	yarn_context_t sched_context;
 	yarn* yarn_current;
 	unsigned long start_time;
 	unsigned long runtime;
@@ -89,23 +86,10 @@ static void yarn_check_stack ( const void* base )
 	}
 }
 
-static void yarn_launcher ( yarn* active_yarn, void (*routine)(void*), void* udata )
-{
-	// basically a bootstrap routine for each yarn which runs the routine then cleans up
-	routine(udata);
-	DEBUG("yarn %p completed, setcontext\n", active_yarn);
-	TTD.runtime = SCHEDULER_UNSCHEDULE;
-	process_table[active_yarn->pid] = 0;
-	setcontext(&(TTD.sched_context));
-}
-
-static void* allocate_stack ( ucontext_t* ctx )
+static void* allocate_stack ( yarn_context_t* ctx )
 {
 	void* ptr = page_allocate(STACK_SIZE, 0, PAGE_READ | PAGE_WRITE);
-	ctx->uc_stack.ss_size = STACK_SIZE;
-	ctx->uc_stack.ss_sp = ptr;
-	assert(ctx->uc_stack.ss_sp);
-	ctx->uc_stack.ss_flags = 0;
+	yarn_context_set_stack(ctx, ptr, STACK_SIZE);
 	yarn_check_stack(ptr);
 	DEBUG("allocated a stack at %p\n", ptr);
 	return ptr;
@@ -118,7 +102,7 @@ static void deallocate_stack ( void* stackbase )
 	page_deallocate(sb, STACK_SIZE);
 }
 
-volatile int __make_trap = 1; // this traps the odd situation where makecontext doesn't work and we get random code jumping in here
+volatile int __make_trap = 1; // this traps the odd situation where yarn_context_make doesn't work and we get random code jumping in here
 
 static yarn_t list_insert ( yarn* active_yarn, int nice )
 {
@@ -131,13 +115,37 @@ static yarn_t list_insert ( yarn* active_yarn, int nice )
 	return pid;
 }
 
+typedef struct _yarn_launch_data
+{
+	yarn* active_yarn;
+	void (*routine)(void*);
+	void* udata;
+} yarn_launch_data;
+
+static void yarn_launcher ( yarn_launch_data* ld )
+{
+	yarn* active_yarn = ld->active_yarn;
+	void (*routine)(void*) = ld->routine;
+	void* udata = ld->udata;
+	// basically a bootstrap routine for each yarn which runs the routine then cleans up
+	yfree(ld);
+	routine(udata);
+	DEBUG("yarn %p completed, setcontext\n", active_yarn);
+	TTD.runtime = SCHEDULER_UNSCHEDULE;
+	process_table[active_yarn->pid] = 0;
+	setcontext(&(TTD.sched_context));
+}
+
 static void prepare_context ( yarn* active_yarn, void (*routine)(void*), void* udata )
 {
-	ucontext_t* uctx = &active_yarn->context;
-	uctx->uc_link = 0;
-	DEBUG("running makecontext on ctx: %p\n", uctx);
-	//makecontext(uctx, basic_launch, 0);
-	makecontext(uctx, (void (*)())yarn_launcher, 3, active_yarn, routine, udata);
+	yarn_launch_data* ld = yalloc(sizeof(yarn_launch_data));
+	yarn_context_t* uctx = &active_yarn->context;
+	ld->active_yarn = active_yarn;
+	ld->routine = routine;
+	ld->udata = udata;
+	DEBUG("running yarn_context_make on ctx: %p\n", uctx);
+	//yarn_context_make(uctx, basic_launch, 0);
+	yarn_context_make(uctx, yarn_launcher, ld);
 }
 
 static void make_trap_abort ()
@@ -145,10 +153,10 @@ static void make_trap_abort ()
 	raise(SIGABRT);
 }
 
-static void fetch_context ( ucontext_t* uctx )
+static void fetch_context ( yarn_context_t* uctx )
 {
 	__make_trap = 0;
-	getcontext(uctx);
+	yarn_context_get(uctx);
 	if (__make_trap != 0)
 		make_trap_abort ();
 	__make_trap = 1;
@@ -221,7 +229,7 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata, int nice )
 	fetch_context(&active_yarn->context);
 	// set up stack and such
 	active_yarn->stackBase = allocate_stack(&(active_yarn->context));
-	// run makecontext to direct it over to the bootstrap
+	// run yarn_context_make to direct it over to the bootstrap
 	prepare_context(active_yarn, routine, udata);
 	// insert it into the yarn list
 	pid = list_insert(active_yarn, nice);
@@ -234,8 +242,8 @@ static void yarn_switch ( unsigned long runtime, yarn_t target )
 {
 	TTD.runtime = runtime;
 	TTD.next = target;
-	DEBUG("swapcontext in switch (rt=%lu, n=%lu)\n", runtime, target);
-	swapcontext(&(TTD.yarn_current->context), &(TTD.sched_context));
+	DEBUG("yarn_context_swap in switch (rt=%lu, n=%lu)\n", runtime, target);
+	yarn_context_swap(&(TTD.yarn_current->context), &(TTD.sched_context));
 }
 
 void yarn_yield ( yarn_t target )
@@ -252,7 +260,7 @@ static void yarn_preempt_handle ( unsigned long thread )
 	pthread_kill(threads[thread], SIGUSR2);
 }
 
-static void preempt_signal_handler ( int sig, struct __siginfo* info, ucontext_t* context )
+static void preempt_signal_handler ( int sig, struct __siginfo* info, yarn_context_t* context )
 {
 	assert(sig == SIGUSR2);
 	memcpy(TTD.yarn_current->context.uc_mcontext, context->uc_mcontext, context->uc_mcsize);
@@ -309,19 +317,19 @@ static void yarn_processor ( unsigned long procID )
 		TTD.next = 0;
 		TTD.runtime = activeJob.runtime;
 		// swap contexts
-		DEBUG("swapcontext to yarn: %p\n", TTD.yarn_current);
+		DEBUG("yarn_context_swap to yarn: %p\n", TTD.yarn_current);
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 		preempt(preempt_time() + activeJob.runtime, procID);
 		preempt_enable();
 #endif
-		rc = swapcontext(&(TTD.sched_context), &(TTD.yarn_current->context));
+		rc = yarn_context_swap(&(TTD.sched_context), &(TTD.yarn_current->context));
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 		preempt_disable();
 #endif
 		activeJob.next = TTD.next;
 		// check it actually worked
 		if (rc == -1)
-			perror("swapcontext failed");
+			perror("yarn_context_swap failed");
 		// set the runtime
 		activeJob.runtime = MIN(TTD.runtime, activeJob.runtime);
 		// if we're unscheduling, yfree up memory

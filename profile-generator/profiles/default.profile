@@ -7,3 +7,4 @@ memory_access_control = 0
 use_system_allocator = 1
 target = MACH
 max_processes = 65536
+context = ucontext
