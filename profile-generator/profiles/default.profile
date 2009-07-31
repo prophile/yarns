@@ -8,3 +8,4 @@ use_system_allocator = 1
 target = MACH
 max_processes = 65536
 context = ucontext
+context_asm = 0

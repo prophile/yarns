@@ -130,10 +130,10 @@ static void yarn_launcher ( yarn_launch_data* ld )
 	// basically a bootstrap routine for each yarn which runs the routine then cleans up
 	yfree(ld);
 	routine(udata);
-	DEBUG("yarn %p completed, setcontext\n", active_yarn);
+	DEBUG("yarn %p completed, yarn_context_set\n", active_yarn);
 	TTD.runtime = SCHEDULER_UNSCHEDULE;
 	process_table[active_yarn->pid] = 0;
-	setcontext(&(TTD.sched_context));
+	yarn_context_set(&(TTD.sched_context));
 }
 
 static void prepare_context ( yarn* active_yarn, void (*routine)(void*), void* udata )
@@ -145,7 +145,7 @@ static void prepare_context ( yarn* active_yarn, void (*routine)(void*), void* u
 	ld->udata = udata;
 	DEBUG("running yarn_context_make on ctx: %p\n", uctx);
 	//yarn_context_make(uctx, basic_launch, 0);
-	yarn_context_make(uctx, yarn_launcher, ld);
+	yarn_context_make(uctx, (void (*)(void*))yarn_launcher, ld);
 }
 
 static void make_trap_abort ()
@@ -265,7 +265,7 @@ static void preempt_signal_handler ( int sig, struct __siginfo* info, yarn_conte
 	assert(sig == SIGUSR2);
 	memcpy(TTD.yarn_current->context.uc_mcontext, context->uc_mcontext, context->uc_mcsize);
 	TTD.runtime = 0;
-	setcontext(&(TTD.sched_context));
+	yarn_context_set(&(TTD.sched_context));
 }
 #endif
 
@@ -293,7 +293,6 @@ static void yarn_processor ( unsigned long procID )
 	sigaddset(&sa.sa_mask, SIGUSR2);
 	sigaction(SIGUSR2, &sa, 0);
 #endif
-	TTD.sched_context.uc_link = 0;
 	activeJob.pid = 0;
 	activeJob.runtime = 0;
 	activeJob.data = 0;
@@ -328,7 +327,7 @@ static void yarn_processor ( unsigned long procID )
 #endif
 		activeJob.next = TTD.next;
 		// check it actually worked
-		if (rc == -1)
+		if (rc == 0)
 			perror("yarn_context_swap failed");
 		// set the runtime
 		activeJob.runtime = MIN(TTD.runtime, activeJob.runtime);

@@ -5,3 +5,6 @@ bin_cflags=-O0 -pipe -Wall -arch i386
 ldflags=-arch i386 -L.
 lto=1
 asflags=-arch i386
+context=i386
+context_asm=1
+as=gcc

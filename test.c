@@ -1,4 +1,4 @@
-#include "yarn.h"
+/*#include "yarn.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -53,5 +53,18 @@ int main ( int argc, char** argv )
 	yarn_new(quit, 0, 14);
 	yarn_process ();
 	
+	return 0;
+}
+*/
+
+#include <stdio.h>
+#include "context.h"
+
+int main ()
+{
+	yarn_context_t ctx;
+	yarn_context_get(&ctx);
+	putchar('!');
+	yarn_context_set(&ctx);
 	return 0;
 }

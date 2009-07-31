@@ -4,3 +4,6 @@ lib_cflags=-O0 -gfull -pipe -Wall -arch i386
 bin_cflags=-O0 -gfull -pipe -Wall -arch i386
 ldflags=-arch i386 -L.
 lto=0
+context=i386
+context_asm=1
+as=gcc
