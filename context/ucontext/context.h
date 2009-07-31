@@ -8,6 +8,8 @@
 #include <ucontext.h>
 #include <stdbool.h>
 
+#define YARN_CONTEXT_API "native-ucontext"
+
 typedef ucontext_t yarn_context_t;
 
 inline static bool yarn_context_init ( yarn_context_t* context )

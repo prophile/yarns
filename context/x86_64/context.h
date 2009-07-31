@@ -9,9 +9,12 @@ struct _yarn_context
 {
 	unsigned long address;
 	unsigned long rbx, rbp, rsi, rsp;
+	unsigned long param;
 	void* stackPointer;
 	unsigned long stackSize;
 };
+
+#define YARN_CONTEXT_API "yarn-context-x86_64"
 
 bool yarn_context_init ( yarn_context_t* context );
 bool yarn_context_set ( yarn_context_t* context );

@@ -3,6 +3,8 @@
 
 #include <stdbool.h>
 
+#define YARN_CONTEXT_API "yarn-context-i386"
+
 typedef struct _yarn_context yarn_context_t;
 
 struct _yarn_context

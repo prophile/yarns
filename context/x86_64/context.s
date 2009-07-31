@@ -28,9 +28,9 @@ ___ctx_sctx:
 	.align 4,0x90
 	.globl ___ctx_start
 ___ctx_start:
-	popq %rax
-	call *%rax
-	movq %rsi, %rsp
+	popq %rcx
+	movq 40(%rdi), %rdi
+	call *%rcx
 	int $5
 	.subsections_via_symbols
 	

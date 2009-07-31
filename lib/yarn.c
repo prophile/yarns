@@ -308,8 +308,18 @@ static void yarn_processor ( unsigned long procID )
 			continue;
 		}
 		DEBUG("job %lu @ proc %d (rt: %lu us)\n", activeJob.pid, (int)procID, activeJob.runtime);
-		assert(activeJob.pid < maxpid);
-		assert(process_table[activeJob.pid]);
+		if (activeJob.pid >= maxpid)
+		{
+			DEBUG("got pid %lu which is out-of-bound!\n", activeJob.pid);
+			usleep(deadSleepTime);
+			continue;
+		}
+		if (!process_table[activeJob.pid])
+		{
+			DEBUG("got dead pid %lu\n", activeJob.pid);
+			usleep(deadSleepTime);
+			continue;
+		}
 		// set all the stuff up
 		TTD.yarn_current = process_table[activeJob.pid];
 		TTD.start_time = preempt_time();
@@ -393,6 +403,7 @@ void yarn_process ()
 		smp_sched_insert(i, prio_lookup(process_table[i]->nice));
 	}
 	live = 1;
+	DEBUG("starting with context API: %s\n", YARN_CONTEXT_API);
 #ifdef YARNS_ENABLE_SMP
 		// create the secondary threads
 	for (i = 1; i < nprocs; i++)

@@ -38,6 +38,7 @@ bool yarn_context_make ( yarn_context_t* context, void (*routine)(void*), void* 
 	*(argp++) = (unsigned long)context;
 	
 	// write registers
+	context->param = (unsigned long)udata;
 	context->rsi = (unsigned long)argp;
 	context->rbp = (unsigned long)0;
 	context->rsp = (unsigned long)(stack_top + sizeof(void*));
