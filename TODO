@@ -3,7 +3,7 @@ Need to:
 * more sync primitives between yarns (condition, semaphore?)
 * establish front API
 * implement API for blocks
-* re-implement all ucontext API for PowerPC/i386 (32- and 64-bit)
+* re-implement all ucontext API for PowerPC
 * rewrite profile generation in Python
 * scheduler changes - split rescheduling off from select
 * scheduler changes - compile all schedulers in different names
