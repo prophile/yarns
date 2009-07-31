@@ -153,10 +153,10 @@ static void make_trap_abort ()
 	raise(SIGABRT);
 }
 
-static void fetch_context ( yarn_context_t* uctx )
+static void init_context ( yarn_context_t* uctx )
 {
 	__make_trap = 0;
-	yarn_context_get(uctx);
+	yarn_context_init(uctx);
 	if (__make_trap != 0)
 		make_trap_abort ();
 	__make_trap = 1;
@@ -226,7 +226,7 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata, int nice )
 	active_yarn = (yarn*)yalloc(sizeof(yarn));
 	assert(active_yarn);
 	// prepare the context
-	fetch_context(&active_yarn->context);
+	init_context(&active_yarn->context);
 	// set up stack and such
 	active_yarn->stackBase = allocate_stack(&(active_yarn->context));
 	// run yarn_context_make to direct it over to the bootstrap

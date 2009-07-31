@@ -5,7 +5,7 @@ extern int gctx ( yarn_context_t* ctx ) __asm__("___ctx_gctx");
 extern void sctx ( yarn_context_t* ctx ) __asm__("___ctx_sctx");
 extern void start ( yarn_context_t* ctx, void* param, void (*routine)(void*) ) __asm__("___ctx_start");
 
-bool yarn_context_get ( yarn_context_t* oldContext )
+bool yarn_context_init ( yarn_context_t* oldContext )
 {
 	gctx(oldContext);
 	return 1;

@@ -13,7 +13,7 @@ struct _yarn_context
 	unsigned long stackSize;
 };
 
-bool yarn_context_get ( yarn_context_t* context );
+bool yarn_context_init ( yarn_context_t* context );
 bool yarn_context_set ( yarn_context_t* context );
 inline static bool yarn_context_set_stack ( yarn_context_t* context, void* stack, unsigned long size )
 	{ context->stackPointer = stack; context->stackSize = size; return 1; }

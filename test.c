@@ -59,12 +59,26 @@ int main ( int argc, char** argv )
 
 #include <stdio.h>
 #include "context.h"
+#include <stdlib.h>
+
+yarn_context_t masterContext;
+yarn_context_t secondaryContext;
+
+void callback ( void* data )
+{
+	putchar('?');
+	yarn_context_set(&masterContext);
+}
+
+#define STACK_SIZE 2048
 
 int main ()
 {
-	yarn_context_t ctx;
-	yarn_context_get(&ctx);
+	void* stackPtr = malloc(STACK_SIZE);
+	yarn_context_init(&secondaryContext);
+	yarn_context_set_stack(&secondaryContext, stackPtr, STACK_SIZE);
+	yarn_context_make(&secondaryContext, callback, 0);
 	putchar('!');
-	yarn_context_set(&ctx);
+	yarn_context_swap(&masterContext, &secondaryContext);
 	return 0;
 }

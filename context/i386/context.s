@@ -24,7 +24,7 @@ ___ctx_sctx:
 	movl 12(%ecx), %esi
 	movl 16(%ecx), %edi
 	movl 20(%ecx), %esp
-	pushl (%ecx)
+	pushl 0(%ecx)
 	ret
 
 	.align 4,0x90

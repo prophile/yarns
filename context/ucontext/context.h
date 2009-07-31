@@ -10,7 +10,7 @@
 
 typedef ucontext_t yarn_context_t;
 
-inline static bool yarn_context_get ( yarn_context_t* context )
+inline static bool yarn_context_init ( yarn_context_t* context )
 	{ return getcontext(context) == 0; }
 inline static bool yarn_context_set ( yarn_context_t* context )
 	{ return setcontext(context) == 0; }
