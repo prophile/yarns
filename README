@@ -2,6 +2,25 @@ Yarns 0.0.2
 
 README is incomplete.
 
+Profiles:
+  For cross-platform compatibility, yarns uses a system called 'profiles'. Before compiling, you need to generate certain files from a profile with the make-profile script. These profiles are just collections of definitions, which are used to build two files from templates - the Makefile and config.h. At present you need PHP for make-profile (rationale: I needed to put it together really quickly and PHP is the language I know best), soon this will be changed to Python. You pass the name of the profile you want to use as an argument to the make-profile script. These profiles are named [os]-[configuration]-[arch].
+  Available OSs:
+    darwin (for Mac OS X)
+    linux
+  Available configurations:
+    debug
+    release
+  Available architectures:
+    ppc
+    i386
+    x86_64
+  You can also from there specify additional definitions. Most of the available definitions you will not need to modify, but ones you might are to modify are:
+    Scheduler: scheduler=NAME (name is one of the ones listed in the Schedulers section below)
+    Synergy method: synergy=NAME (name is one of the ones listed in the Synergy methods below)
+    Timeslice: timeslice=n (n is the standard timeslice in ms)
+    Dead sleep time: dead_sleep_time=n (n is the dead sleep time in ms, ie the time that a processor will sleep if it has no job assigned)
+    Stack size: stack_size=n (n is the stack size, in kb, assigned to each yarn. If this is too small, you will get very hard-to-debug problems. If this is too large, you will eat up masses of memory. Unless you know what you are doing, leave this at the default of 32)
+
 Schedulers:
   MULTILEVEL - a simple multi-level scheduler with support for priorities
   ROUND_ROBIN - a very simple round-robin scheduler, no support for priorities, just does exactly what it says on the tin

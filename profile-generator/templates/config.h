@@ -2,7 +2,7 @@
 #define __YARNS_CONFIG__
 
 // general config
-#define YARNS_STACK_PAGES 8
+#define YARNS_STACK_PAGES ({$stack_size} / 4)
 #define YARNS_ENABLE_SMP
 #define YARNS_DEAD_SLEEP_TIME {$dead_sleep_time}
 

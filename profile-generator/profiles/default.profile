@@ -9,3 +9,4 @@ target = MACH
 max_processes = 65536
 context = ucontext
 context_asm = 0
+stack_size = 32
