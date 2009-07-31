@@ -1,4 +1,4 @@
-/*#include "yarn.h"
+#include "yarn.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -55,9 +55,9 @@ int main ( int argc, char** argv )
 	
 	return 0;
 }
-*/
 
-#include <stdio.h>
+
+/*#include <stdio.h>
 #include "context.h"
 #include <stdlib.h>
 
@@ -82,3 +82,4 @@ int main ()
 	yarn_context_swap(&masterContext, &secondaryContext);
 	return 0;
 }
+*/
