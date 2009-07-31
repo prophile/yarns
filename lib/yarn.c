@@ -49,7 +49,8 @@ typedef struct _yarn_thread_data
 } yarn_thread_data;
 #ifdef YARNS_ENABLE_SMP
 pthread_key_t _ttd;
-#define TTD (*(yarn_thread_data*)(pthread_getspecific(_ttd)))
+#define TTDGET() yarn_thread_data* _ttd_local = (yarn_thread_data*)pthread_getspecific(_ttd)
+#define TTD (*_ttd_local)
 static void TTDINIT_MAIN ()
 {
 	int rc;
@@ -66,6 +67,7 @@ static void TTDINIT()
 }
 #else
 static yarn_thread_data _ttd;
+#define TTDGET()
 #define TTD _ttd
 #define TTDINIT_MAIN() {}
 #define TTDINIT() { _ttd.yarn_current = 0; _ttd.runtime = 0; }
@@ -124,6 +126,7 @@ typedef struct _yarn_launch_data
 
 static void yarn_launcher ( yarn_launch_data* ld )
 {
+	TTDGET();
 	yarn* active_yarn = ld->active_yarn;
 	void (*routine)(void*) = ld->routine;
 	void* udata = ld->udata;
@@ -164,6 +167,7 @@ static void init_context ( yarn_context_t* uctx )
 
 yarn_t yarn_current ( void )
 {
+	TTDGET();
 	return TTD.yarn_current->pid;
 }
 
@@ -240,6 +244,7 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata, int nice )
 
 static void yarn_switch ( unsigned long runtime, yarn_t target )
 {
+	TTDGET();
 	TTD.runtime = runtime;
 	TTD.next = target;
 	DEBUG("yarn_context_swap in switch (rt=%lu, n=%lu)\n", runtime, target);
@@ -249,6 +254,7 @@ static void yarn_switch ( unsigned long runtime, yarn_t target )
 void yarn_yield ( yarn_t target )
 {
 	// ignore target for now
+	TTDGET();
 	unsigned long t = preempt_time();
 	unsigned long dt = TTD.start_time - t;
 	yarn_switch(TTD.runtime - dt, target);
@@ -263,6 +269,7 @@ static void yarn_preempt_handle ( unsigned long thread )
 static void preempt_signal_handler ( int sig, struct __siginfo* info, yarn_context_t* context )
 {
 	assert(sig == SIGUSR2);
+	TTDGET();
 	memcpy(TTD.yarn_current->context.uc_mcontext, context->uc_mcontext, context->uc_mcsize);
 	TTD.runtime = 0;
 	yarn_context_set(&(TTD.sched_context));
@@ -279,6 +286,7 @@ static void yarn_processor ( unsigned long procID )
 	unsigned deadSleepTime = YARNS_DEAD_SLEEP_TIME;
 	// init the thread yarn data
 	TTDINIT();
+	TTDGET();
 	// make sure it initted properly
 	assert(&TTD);
 	// repeatedly ask the scheduler for the next job
@@ -422,6 +430,7 @@ void yarn_process ()
 #if YARNS_SYNERGY == YARNS_SYNERGY_MARKED
 void yarn_mark ()
 {
+	TTDGET();
 	unsigned long t = preempt_time();
 	unsigned long dt = TTD.start_time - t;
 	if (dt > TTD.runtime)
