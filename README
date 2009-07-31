@@ -2,3 +2,20 @@ Yarns 0.0.1
 
 README is incomplete.
 
+Schedulers:
+  MULTILEVEL - a simple multi-level scheduler with support for priorities
+  ROUND_ROBIN - a very simple round-robin scheduler, no support for priorities, just does exactly what it says on the tin
+  RANDOM - a random scheduler, which picks random tasks each time. Not very useful in practice.
+  RB - an old hack I tried first time at implementing CFS. Not at all useful.
+  STAIRCASE - rotating staircase deadline scheduler. Great all-round scheduler, particularly for applications where priorities are important.
+  FAIR - completely fair scheduler. Great all-round scheduler, particularly where it is very important to ensure fairness between processes.
+
+Each of these schedulers will have multiple instances, one for each processing core. There is a master scheduler (the SMP scheduler) which load-balances between these. Yarns created early on with the highest priority will generally have a core allocated entirely for their use.
+
+Synergy methods:
+  COOPERATIVE - control is specifically passed over via a call to yarn_yield
+  MARKED - insert many calls to yarn_mark, and when the timeslice is up, this does a yield. Useful for script interpreters - insert calls at each loop iteration and before each function call in the interpreter.
+  PREEMPTIVE - control can be passed over manually, but preemption is in place - after a set period of time, yarns are frozen and swapped out. Note that this is currently /very/ broken
+
+Context APIs:
+  You should generally stick with the defaults here. This is for the actual management of machine contexts. The default is 'ucontext' which uses the libc ucontext functions for implementation, however there are alternatives stemming from the simple reason that ucontext is problematic on Darwin - nonexistant on 64-bit, slow, and requiring massive stacks. Instead, there exist assembly implementations (currently for i386, and x86_64, tested only on Darwin). Note that ucontext is fine on linux.
