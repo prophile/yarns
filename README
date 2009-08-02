@@ -35,6 +35,3 @@ Synergy methods:
   COOPERATIVE - control is specifically passed over via a call to yarn_yield
   MARKED - insert many calls to yarn_mark, and when the timeslice is up, this does a yield. Useful for script interpreters - insert calls at each loop iteration and before each function call in the interpreter.
   PREEMPTIVE - control can be passed over manually, but preemption is in place - after a set period of time, yarns are frozen and swapped out. Note that this is currently /very/ broken
-
-Context APIs:
-  You should generally stick with the defaults here. This is for the actual management of machine contexts. The default is 'ucontext' which uses the libc ucontext functions for implementation, however there are alternatives stemming from the simple reason that ucontext is problematic on Darwin - nonexistant on 64-bit, slow, and requiring massive stacks. Instead, there exist assembly implementations (currently for i386, and x86_64, tested only on Darwin). Note that ucontext is fine on linux.

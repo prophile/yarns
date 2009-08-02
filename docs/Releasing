@@ -1,0 +1,9 @@
+RELEASE PROCEDURE:
+
+(1) Update README to reflect version number.
+(2) Update all copyrights to reflect release date.
+(3) Create a signed tag of that version.
+
+Version naming:
+
+At present: 0.0.x
