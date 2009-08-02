@@ -13,14 +13,20 @@ $base = array_shift($argv);
 $arches = $argv;
 $lipoes = array();
 
+function shell ( $command )
+{
+	echo "$command\n";
+	system($command);
+}
+
 foreach ($arches as $arch)
 {
-	system("./make-profile $base-$arch");
-	system("make clean");
-	system("make -j2 libyarns.a");
-	system("mv libyarns.a libyarns-$arch.a");
+	shell("./make-profile $base-$arch");
+	shell("make clean");
+	shell("make -j2 libyarns.a");
+	shell("mv libyarns.a libyarns-$arch.a");
 	$lipoes[] = "libyarns-$arch.a";
 }
 
-system("lipo -create -output libyarns.a " . implode(' ', $lipoes));
-system("rm -i " . implode(' ', $lipoes));
+shell("lipo -create -output libyarns.a " . implode(' ', $lipoes));
+shell("rm -i " . implode(' ', $lipoes));
