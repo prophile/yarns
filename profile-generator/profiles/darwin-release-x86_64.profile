@@ -6,4 +6,5 @@ ldflags=-arch x86_64 -L.
 lto=0
 context=x86_64
 context_asm=1
-as=gcc -arch x86_64
+as=as -arch x86_64
+asflags=

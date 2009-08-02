@@ -443,4 +443,8 @@ void yarn_mark ()
 		yarn_switch(0, 0);
 	}
 }
+#else
+void yarn_mark ()
+{
+}
 #endif

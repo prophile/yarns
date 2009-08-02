@@ -3,29 +3,33 @@ CXX={$cxx}
 INCLUDES=-Idata -Iinclude/yarns -Ilib -Isched -Isystem -Icontext/{$context}
 CFLAGS={$lib_cflags} $(INCLUDES)
 TEST_CFLAGS={$bin_cflags} $(INCLUDES)
-LDFLAGS={$ldflags}
+LDFLAGS={$ldflags} {if $strip}-exported_symbols_list exports.txt{/if}
 
-OBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/master_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o obj/context.o {if $context_asm}obj/context_asm.o{/if} obj/timer.o
+COBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/master_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o obj/context.o obj/timer.o
+AOBJECTS={if $context_asm}obj/context_asm.o{/if}
 
 test: obj/test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
 
-{ifnot $lto}
-libyarns.a: $(OBJECTS)
+libyarns.a: obj/ymain.o
 	ar rcs $@ $^
+	
+{ifnot $lto}
+obj/ymain.o: $(COBJECTS) $(AOBJECTS)
+	ld -r $^ -o $@
 {/ifnot}
 {if $lto}
-libyarns.a: obj/libyarns.o
-	ar rcs $@ $^
+obj/ymain.o: obj/libyarns.o $(AOBJECTS)
+	ld -r $^ -o $@
 
 obj/libyarns.o: obj/libyarns.s
-	as {$asflags} -o $@ $<
+	{$as} {$asflags} -o $@ $<
 
 obj/libyarns.s: obj/libyarns.bc
 	llc -f -o $@ $<
 
-obj/libyarns.bc: $(OBJECTS)
-	llvm-ld -internalize-public-api-file=exports.txt -link-as-library -o $@ $^
+obj/libyarns.bc: $(COBJECTS)
+	llvm-ld -link-as-library -o $@ $^
 {/if}
 
 obj/test.o: test.c include/yarns/yarn.h lib/alloc.h include/yarns/config.h Makefile
@@ -78,7 +82,7 @@ obj/context.o: context/{$context}/context.c context/{$context}/context.h Makefil
 
 {if $context_asm}
 obj/context_asm.o: context/{$context}/context.s Makefile
-	{$as} -g -c -o $@ $<
+	{$as} {$asflags} -o $@ $<
 {/if}
 
 obj/timer.o: lib/timer.c lib/timer.h
