@@ -392,13 +392,14 @@ static unsigned long numprocs ()
 }
 #endif
 
-void yarn_process ()
+void yarn_process ( unsigned long otherThreadCount )
 {
 // look through yarns
 	unsigned long nprocs;
 	int i;
 #ifdef YARNS_ENABLE_SMP
-	nprocs = numprocs();
+	nprocs = numprocs() - otherThreadCount;
+	if (nprocs < 1) nprocs = 1;
 	smp_sched_init(nprocs);
 #else
 	smp_sched_init(1);

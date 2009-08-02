@@ -51,7 +51,7 @@ int main ( int argc, char** argv )
 		yarnify(i);
 	}
 	yarn_new(quit, 0, 14);
-	yarn_process ();
+	yarn_process (0);
 	
 	return 0;
 }
