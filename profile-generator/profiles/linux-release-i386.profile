@@ -6,3 +6,4 @@ lib_cflags = -O3 -Wall
 bin_cflags = -O3 -Wall
 ldflags = -L. -lpthread
 lto = 0
+linux_style_strip=1

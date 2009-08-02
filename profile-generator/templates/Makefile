@@ -3,7 +3,7 @@ CXX={$cxx}
 INCLUDES=-Idata -Iinclude/yarns -Ilib -Isched -Isystem -Icontext/{$context}
 CFLAGS={$lib_cflags} $(INCLUDES)
 TEST_CFLAGS={$bin_cflags} $(INCLUDES)
-LDFLAGS={$ldflags} {if $strip}-exported_symbols_list exports.txt{/if}
+LDFLAGS={$ldflags} {if $strip}-exported_symbols_list exports.txt{/if}{if $linux_style_strip}--retain-symbols-file exports.txt{/if}
 
 COBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/master_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o obj/context.o obj/timer.o
 AOBJECTS={if $context_asm}obj/context_asm.o{/if}
