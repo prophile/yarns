@@ -3,11 +3,11 @@
 
 #include <stdio.h>
 
-#define DEBUG_ALLOCATOR      0x0001
-#define DEBUG_SCHEDULER      0x0002
-#define DEBUG_SMP_SCHEDULER  0x0004
-#define DEBUG_YARNS          0x0008
-#define DEBUG_PAGE_ALLOCATOR 0x0010
+#define DEBUG_ALLOCATOR         0x0001
+#define DEBUG_SCHEDULER         0x0002
+#define DEBUG_MASTER_SCHEDULER  0x0004
+#define DEBUG_YARNS             0x0008
+#define DEBUG_PAGE_ALLOCATOR    0x0010
 
 #define DEBUG_EVERYTHING ~0
 

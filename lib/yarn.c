@@ -2,7 +2,7 @@
 #include "config.h"
 #include "context.h"
 #include <stdlib.h>
-#include "smp_scheduler.h"
+#include "master_scheduler.h"
 #include <assert.h>
 #include <stdio.h>
 #include "pages.h"
@@ -239,7 +239,7 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata, int nice )
 	// insert it into the yarn list
 	pid = list_insert(active_yarn, nice);
 	if (live)
-		smp_sched_insert(pid, prio_lookup(nice));
+		master_sched_insert(pid, prio_lookup(nice));
 	return pid;
 }
 
@@ -309,7 +309,7 @@ static void yarn_processor ( unsigned long procID )
 	activeJob.priority = SCHED_PRIO_NORMAL;
 	while (!breakProcessor)
 	{
-		smp_sched_select(procID, &activeJob);
+		master_sched_select(procID, &activeJob);
 		if (activeJob.pid == 0)
 		{
 			usleep(deadSleepTime);
@@ -401,9 +401,9 @@ void yarn_process ( unsigned long otherThreadCount )
 #ifdef YARNS_ENABLE_SMP
 	nprocs = numprocs() - otherThreadCount;
 	if (nprocs < 1) nprocs = 1;
-	smp_sched_init(nprocs);
+	master_sched_init(nprocs);
 #else
-	smp_sched_init(1);
+	master_sched_init(1);
 #endif
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 	preempt_init();
@@ -413,7 +413,7 @@ void yarn_process ( unsigned long otherThreadCount )
 	// set up all the yarns in the scheduler
 	for (i = 1; i < maxpid; i++)
 	{
-		smp_sched_insert(i, prio_lookup(process_table[i]->nice));
+		master_sched_insert(i, prio_lookup(process_table[i]->nice));
 	}
 	live = 1;
 	DEBUG("starting with context API: %s\n", YARN_CONTEXT_API);

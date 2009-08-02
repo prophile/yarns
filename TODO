@@ -7,7 +7,6 @@ Need to:
 * rewrite profile generation in Python
 * scheduler changes - split rescheduling off from select
 * scheduler changes - compile all schedulers in different names
-* rename SMP scheduler to master scheduler
 * build changes - make everything be combined into one native object file and ship that; allows for LLVM LTO + native asm
 * add profiles for darwin-*-ppc64
 * finish README

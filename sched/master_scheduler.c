@@ -1,4 +1,4 @@
-#include "smp_scheduler.h"
+#include "master_scheduler.h"
 #include "lock.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -9,7 +9,7 @@
 
 #ifdef YARNS_ENABLE_SMP
 
-#define DEBUG_MODULE DEBUG_SMP_SCHEDULER
+#define DEBUG_MODULE DEBUG_MASTER_SCHEDULER
 
 static unsigned long nprocs;
 static lock_t* locks;
@@ -17,10 +17,10 @@ static scheduler** schedulers;
 static unsigned long* single_jobs;
 static unsigned long* jobcounts;
 
-void smp_sched_init ( unsigned long procs )
+void master_sched_init ( unsigned long procs )
 {
 	int i;
-	DEBUG("smp_sched_init with procs=%lu\n", procs);
+	DEBUG("master_sched_init with procs=%lu\n", procs);
 	nprocs = procs;
 	locks = yalloc(procs*sizeof(lock_t));
 	schedulers = yalloc(procs*sizeof(scheduler*));
@@ -132,7 +132,7 @@ static bool rebalance ( unsigned long target )
 	lock_unlock(locks + target);
 }
 
-void smp_sched_insert ( unsigned long pid, scheduler_priority prio )
+void master_sched_insert ( unsigned long pid, scheduler_priority prio )
 {
 	unsigned long target;
 	if (prio == SCHED_PRIO_TITANIC)
@@ -165,7 +165,7 @@ static void doselect ( unsigned long core, scheduler_job* job )
 	lock_unlock(locks + core);
 }
 
-void smp_sched_select ( unsigned long core, scheduler_job* job )
+void master_sched_select ( unsigned long core, scheduler_job* job )
 {
 	unsigned c = core;
 	if (single_jobs[core])
