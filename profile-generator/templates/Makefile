@@ -1,7 +1,7 @@
 CC={$cc}
 CXX={$cxx}
 INCLUDES=-Idata -Iinclude/yarns -Ilib -Isched -Isystem -Icontext/{$context}
-CFLAGS={$lib_cflags} $(INCLUDES)
+CFLAGS={$lib_cflags} $(INCLUDES) -DYARNS_CURRENT_VERSION=\"`git describe`\"
 TEST_CFLAGS={$bin_cflags} $(INCLUDES)
 LDFLAGS={$ldflags} {if $strip}-exported_symbols_list exports.txt{/if}{if $linux_style_strip}--retain-symbols-file exports.txt{/if}
 

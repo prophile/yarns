@@ -5,8 +5,6 @@ Need to:
 * implement API for blocks
 * re-implement all ucontext API for PowerPC
 * rewrite profile generation in Python
-* scheduler changes - split rescheduling off from select
-* scheduler changes - compile all schedulers in different names
 * add profiles for darwin-*-ppc64
 * finish README
 * implement preemption on darwin

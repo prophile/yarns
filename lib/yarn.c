@@ -455,3 +455,12 @@ void yarn_mark ()
 {
 }
 #endif
+
+const char* yarns_version ()
+{
+#ifdef YARNS_CURRENT_VERSION
+	return YARNS_CURRENT_VERSION;
+#else
+	return "?";
+#endif
+}
