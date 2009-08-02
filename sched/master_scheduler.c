@@ -16,8 +16,9 @@ static lock_t* locks;
 static scheduler** schedulers;
 static unsigned long* single_jobs;
 static unsigned long* jobcounts;
+static int secSchedType;
 
-void master_sched_init ( unsigned long procs )
+void master_sched_init ( unsigned long procs, int prim, int sec )
 {
 	int i;
 	DEBUG("master_sched_init with procs=%lu\n", procs);
@@ -28,7 +29,8 @@ void master_sched_init ( unsigned long procs )
 	single_jobs = yalloc(procs*sizeof(unsigned long));
 	DEBUG("setting up proc 0, with scheduler\n");
 	lock_init(&locks[0]);
-	schedulers[0] = SCHED_ALLOCATE_PRIMARY();
+	schedulers[0] = allocate_sched_by_number(prim);
+	secSchedType = sec;
 	for (i = 1; i < procs; i++)
 	{
 		DEBUG("setting up proc %lu\n", i);
@@ -94,7 +96,7 @@ static unsigned long select_core_most_load ()
 static scheduler* scheduler_for_core ( unsigned long core )
 {
 	if (!schedulers[core])
-		schedulers[core] = SCHED_ALLOCATE_SECONDARY();
+		schedulers[core] = allocate_sched_by_number(secSchedType);
 	return schedulers[core];
 }
 
@@ -218,3 +220,18 @@ void master_sched_select ( unsigned long core, scheduler_job* job )
 scheduler* _main_scheduler;
 
 #endif
+
+// tail call
+scheduler* allocate_sched_by_number ( int n )
+{
+	switch (n)
+	{
+		case YARNS_SCHEDULER_ROUND_ROBIN:
+			return sched_allocate_round_robin();
+		case YARNS_SCHEDULER_ROTATING_STAIRCASE:
+			return sched_allocate_staircase();
+		case YARNS_SCHEDULER_COMPLETELY_FAIR:
+		default:
+			return sched_allocate_fair();
+	}
+}

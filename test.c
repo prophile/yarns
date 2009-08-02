@@ -51,7 +51,7 @@ int main ( int argc, char** argv )
 		yarnify(i);
 	}
 	yarn_new(quit, 0, 14);
-	yarn_process (0);
+	yarn_process (0, YARNS_SCHEDULER_COMPLETELY_FAIR, YARNS_SCHEDULER_ROUND_ROBIN);
 	
 	return 0;
 }

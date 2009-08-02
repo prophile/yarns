@@ -400,7 +400,7 @@ static unsigned long numprocs ()
 }
 #endif
 
-void yarn_process ( unsigned long otherThreadCount )
+void yarn_process ( unsigned long otherThreadCount, int primaryScheduler, int secondaryScheduler )
 {
 // look through yarns
 	unsigned long nprocs;
@@ -408,9 +408,9 @@ void yarn_process ( unsigned long otherThreadCount )
 #ifdef YARNS_ENABLE_SMP
 	nprocs = numprocs() - otherThreadCount;
 	if (nprocs < 1) nprocs = 1;
-	master_sched_init(nprocs);
+	master_sched_init(nprocs, primaryScheduler, secondaryScheduler);
 #else
-	master_sched_init(1);
+	master_sched_init(1, primaryScheduler, secondaryScheduler);
 #endif
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 	preempt_init();
