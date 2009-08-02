@@ -9,3 +9,8 @@ Need to:
 * scheduler changes - compile all schedulers in different names
 * rename SMP scheduler to master scheduler
 * build changes - make everything be combined into one native object file and ship that; allows for LLVM LTO + native asm
+* move to microsecond accuracy in scheduling
+* add profiles for darwin-*-ppc64
+* finish README
+* implement preemption on darwin
+* research preemption on linux
