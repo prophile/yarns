@@ -22,10 +22,7 @@ Profiles:
     Stack size: stack_size=n (n is the stack size, in kb, assigned to each yarn. If this is too small, you will get very hard-to-debug problems. If this is too large, you will eat up tonnes of memory. Unless you know what you are doing, leave this at the default of 32)
 
 Schedulers:
-  MULTILEVEL - a simple multi-level scheduler with support for priorities
   ROUND_ROBIN - a very simple round-robin scheduler, no support for priorities, just does exactly what it says on the tin
-  RANDOM - a random scheduler, which picks random tasks each time. Not very useful in practice.
-  RB - an old hack I tried first time at implementing CFS. Not at all useful.
   STAIRCASE - rotating staircase deadline scheduler. Great all-round scheduler, particularly for applications where priorities are important.
   FAIR - completely fair scheduler. Great all-round scheduler, particularly where it is very important to ensure fairness between processes.
 

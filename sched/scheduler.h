@@ -1,5 +1,5 @@
-#ifndef __YARNS_SCHED__
-#define __YARNS_SCHED__
+#ifndef __YARNS_SCHEDULER__
+#define __YARNS_SCHEDULER__
 
 typedef enum _scheduler_priority
 {
@@ -22,12 +22,24 @@ typedef struct _scheduler_job
 
 typedef struct _scheduler scheduler;
 
-#define SCHEDULER_UNSCHEDULE ~0UL
-#define SCHEDULER_WANT_IDLE ~0UL
+struct _scheduler
+{
+	void (*deallocate)(scheduler* sched);
+	void (*schedule)(scheduler* sched, unsigned long pid, scheduler_priority prio);
+	void (*select)(scheduler* sched, scheduler_job* job);
+	void (*reschedule)(scheduler* sched, scheduler_job* job);
+	void (*unschedule)(scheduler* sched, scheduler_job* job);
+	void* context;
+};
 
-scheduler* scheduler_init ();
-void scheduler_free ( scheduler* sched );
-void scheduler_insert ( scheduler* sched, unsigned long pid, scheduler_priority prio );
-void scheduler_select ( scheduler* sched, scheduler_job* job );
+#define scheduler_deallocate(sched) sched->deallocate(sched)
+#define scheduler_schedule(sched,pid,prio) sched->schedule(sched,pid,prio)
+#define scheduler_select(sched,job) sched->select(sched,job)
+#define scheduler_reschedule(sched,job) sched->reschedule(sched,job)
+#define scheduler_unschedule(sched,job) sched->unschedule(sched,job)
+
+scheduler* sched_allocate_round_robin ();
+scheduler* sched_allocate_staircase ();
+scheduler* sched_allocate_fair ();
 
 #endif

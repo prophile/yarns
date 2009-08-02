@@ -28,7 +28,7 @@ void master_sched_init ( unsigned long procs )
 	single_jobs = yalloc(procs*sizeof(unsigned long));
 	DEBUG("setting up proc 0, with scheduler\n");
 	lock_init(&locks[0]);
-	schedulers[0] = scheduler_init();
+	schedulers[0] = SCHED_ALLOCATE_PRIMARY();
 	for (i = 1; i < procs; i++)
 	{
 		DEBUG("setting up proc %lu\n", i);
@@ -94,7 +94,7 @@ static unsigned long select_core_most_load ()
 static scheduler* scheduler_for_core ( unsigned long core )
 {
 	if (!schedulers[core])
-		schedulers[core] = scheduler_init();
+		schedulers[core] = SCHED_ALLOCATE_SECONDARY();
 	return schedulers[core];
 }
 
@@ -109,10 +109,8 @@ static void job_hoist ( unsigned long src, unsigned long dst )
 	scheduler_select(schedulers[src], &job);
 	if (job.pid)
 	{
-		scheduler_insert(schedulers[dst], job.pid, job.priority);
-		job.runtime = SCHEDULER_UNSCHEDULE;
-		job.next = SCHEDULER_WANT_IDLE;
-		scheduler_select(schedulers[src], &job);
+		scheduler_schedule(schedulers[dst], job.pid, job.priority);
+		scheduler_unschedule(schedulers[src], &job);
 		jobcounts[src]--;
 		jobcounts[dst]++;
 	}
@@ -132,7 +130,7 @@ static bool rebalance ( unsigned long target )
 	lock_unlock(locks + target);
 }
 
-void master_sched_insert ( unsigned long pid, scheduler_priority prio )
+void master_sched_schedule ( unsigned long pid, scheduler_priority prio )
 {
 	unsigned long target;
 	if (prio == SCHED_PRIO_TITANIC)
@@ -149,7 +147,7 @@ void master_sched_insert ( unsigned long pid, scheduler_priority prio )
 	target = select_core_least_load();
 	DEBUG("scheduling process %lu for processor %lu\n", pid, target);
 	lock_lock(locks + target);
-	scheduler_insert(scheduler_for_core(target), pid, prio);
+	scheduler_schedule(scheduler_for_core(target), pid, prio);
 	jobcounts[target]++;
 	lock_unlock(locks + target);
 }
@@ -157,12 +155,34 @@ void master_sched_insert ( unsigned long pid, scheduler_priority prio )
 static void doselect ( unsigned long core, scheduler_job* job )
 {
 	lock_lock(locks + core);
-	if (job->runtime == SCHEDULER_UNSCHEDULE && job->pid != 0)
-	{
-		jobcounts[core]--;
-	}
 	scheduler_select(scheduler_for_core(core), job);
 	lock_unlock(locks + core);
+}
+
+void master_sched_unschedule ( unsigned long core, scheduler_job* job )
+{
+	if (single_jobs[core])
+	{
+		single_jobs[core] = 0;
+		jobcounts[core] = 0;
+	}
+	else
+	{
+		lock_lock(locks + core);
+		scheduler_unschedule(scheduler_for_core(core), job);
+		jobcounts[core]--;
+		lock_unlock(locks + core);
+	}
+}
+
+void master_sched_reschedule ( unsigned long core, scheduler_job* job )
+{
+	if (!single_jobs[core])
+	{
+		lock_lock(locks + core);
+		scheduler_reschedule(scheduler_for_core(core), job);
+		lock_unlock(locks + core);
+	}
 }
 
 void master_sched_select ( unsigned long core, scheduler_job* job )
@@ -170,26 +190,11 @@ void master_sched_select ( unsigned long core, scheduler_job* job )
 	unsigned c = core;
 	if (single_jobs[core])
 	{
-		if (job->pid == single_jobs[core] && job->runtime == SCHEDULER_UNSCHEDULE)
-		{
-			// we no longer want this core. report to sleep it and free stuff up
-			single_jobs[core] = 0;
-			jobcounts[core] = 0;
-			job->pid = 0;
-			job->runtime = 0;
-			job->data = 0;
-			job->priority = SCHED_PRIO_NORMAL;
-			return;
-		}
 		job->pid = single_jobs[core];
 		job->runtime = ~0UL - 1; // basically this means "run forever" :)
 		job->data = 0;
 		job->priority = SCHED_PRIO_TITANIC;
-	}
-	if (job->pid != 0 && job->runtime == SCHEDULER_UNSCHEDULE)
-	{
-		DEBUG("unscheduled job %lu for core %lu\n", job->pid, core);
-		jobcounts[core]--;
+		return;
 	}
 	doselect(c, job);
 	if (job->pid == 0)

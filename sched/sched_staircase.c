@@ -2,10 +2,9 @@
 #include "alloc.h"
 #include "queue.h"
 #include "config.h"
+#include "debug.h"
 #include <assert.h>
 #include <stdbool.h>
-
-#if YARNS_SCHEDULER == YARNS_SCHED_STAIRCASE
 
 #define DEBUG_MODULE DEBUG_SCHEDULER
 
@@ -26,39 +25,26 @@ typedef struct _job_entry
 	unsigned long lastLevel;
 } job_entry;
 
-struct _scheduler
+typedef struct _scheduler_staircase scheduler_staircase;
+
+struct _scheduler_staircase
 {
 	staircase_block* active;
 	staircase_block* exhausted;
-	bool inSwap;
 };
 
-scheduler* scheduler_init ()
+static void scheduler_staircase_deallocate ( scheduler* mst )
 {
-	int i;
-	scheduler* sched = yalloc(sizeof(scheduler));
-	sched->active = yalloc(sizeof(staircase_block));
-	sched->exhausted = yalloc(sizeof(staircase_block));
-	for (i = 0; i < LAYERS; i++)
-	{
-		sched->active->queues[i] = fifo_new();
-		sched->active->timeslices[i] = YARNS_TIMESLICE * 5;
-		sched->exhausted->queues[i] = fifo_new();
-		sched->exhausted->timeslices[i] = YARNS_TIMESLICE * 5;
-	}
-	assert(sizeof(unsigned long) == sizeof(void*));
-	return sched;
-}
-
-void scheduler_free ( scheduler* sched )
-{
+	scheduler_staircase* sched = (scheduler_staircase*)mst->context;
 	yfree(sched->active);
 	yfree(sched->exhausted);
 	yfree(sched);
+	yfree(mst);
 }
 
-void scheduler_insert ( scheduler* sched, unsigned long pid, scheduler_priority prio )
+static void scheduler_staircase_schedule ( scheduler* mst, unsigned long pid, scheduler_priority prio )
 {
+	scheduler_staircase* sched = (scheduler_staircase*)mst->context;
 	int p = (int)prio;
 	job_entry* je = yalloc(sizeof(job_entry));
 	if (p > 0) p--;
@@ -74,50 +60,52 @@ void scheduler_insert ( scheduler* sched, unsigned long pid, scheduler_priority 
 #define MIN(x,y) ((x)<(y)?(x):(y))
 #define MIN3(x,y,z) MIN(x,MIN(y,z))
 
-void scheduler_select ( scheduler* sched, scheduler_job* job )
+static void scheduler_staircase_reschedule ( scheduler* mst, scheduler_job* job )
 {
+	scheduler_staircase* sched = (scheduler_staircase*)mst->context;
 	job_entry* je;
-	unsigned long selectedLevel;
 	if (job->pid != 0)
 		je = (job_entry*)job->data;
 	else
 		je = 0;
-	if (!sched->inSwap)
+	assert(je);
+	sched->active->timeslices[je->lastLevel] -= (je->lastTimeslice - job->runtime);
+	je->timeslice -= (je->lastTimeslice - job->runtime);
+	if (je->timeslice == 0)
 	{
-		if (job->runtime == SCHEDULER_UNSCHEDULE)
-		{
-			sched->active->timeslices[je->lastLevel] -= je->lastTimeslice;
-			yfree(je);
-		}
-		else if (je)
-		{
-			sched->active->timeslices[je->lastLevel] -= (je->lastTimeslice - job->runtime);
-			je->timeslice -= (je->lastTimeslice - job->runtime);
-			if (je->timeslice == 0)
-			{
-				je->lastLevel = je->originalLevel;
-				je->timeslice = YARNS_TIMESLICE;
-				fifo_enqueue_pointer(sched->exhausted->queues[je->originalLevel], je);
-			}
-			else
-			{
-				unsigned long nextLevel;
-				if (je->lastLevel != LAYERS-1)
-					nextLevel = ++(je->lastLevel);
-				else
-					nextLevel = je->lastLevel;
-				fifo_enqueue_pointer(sched->exhausted->queues[nextLevel], je);
-			}
-		}
+		je->lastLevel = je->originalLevel;
+		je->timeslice = YARNS_TIMESLICE;
+		fifo_enqueue_pointer(sched->exhausted->queues[je->originalLevel], je);
 	}
-	if (job->next == SCHEDULER_WANT_IDLE)
+	else
 	{
-		job->pid = 0;
-		job->runtime = 0;
-		job->data = 0;
-		return;
+		unsigned long nextLevel;
+		if (je->lastLevel != LAYERS-1)
+			nextLevel = ++(je->lastLevel);
+		else
+			nextLevel = je->lastLevel;
+		fifo_enqueue_pointer(sched->exhausted->queues[nextLevel], je);
 	}
-	selectedLevel = 0;
+}
+
+static void scheduler_staircase_unschedule ( scheduler* mst, scheduler_job* job )
+{
+	scheduler_staircase* sched = (scheduler_staircase*)mst->context;
+	job_entry* je;
+	if (job->pid != 0)
+		je = (job_entry*)job->data;
+	else
+		je = 0;
+	assert(je);
+	sched->active->timeslices[je->lastLevel] -= je->lastTimeslice;
+	yfree(je);
+}
+
+static void scheduler_staircase_select ( scheduler* mst, scheduler_job* job )
+{
+	scheduler_staircase* sched = (scheduler_staircase*)mst->context;
+	unsigned long selectedLevel = 0;
+	job_entry* je;
 	while (selectedLevel < LAYERS)
 	{
 		if (sched->active->timeslices[selectedLevel] == 0)
@@ -134,7 +122,7 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 	}
 	if (selectedLevel == LAYERS) // expired
 	{
-		if (sched->inSwap)
+		if (job->data == 1) // this means we did a swap
 		{
 			job->pid = 0;
 			job->runtime = 0;
@@ -145,9 +133,9 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 			staircase_block* block = sched->active;
 			sched->active = sched->exhausted;
 			sched->exhausted = block;
-			sched->inSwap = 1;
-			scheduler_select(sched, job);
-			sched->inSwap = 0;
+			DEBUG("did a swap\n");
+			job->data = 1;
+			scheduler_staircase_select(mst, job); // now tail-recursive!
 		}
 	}
 	else
@@ -161,4 +149,26 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 	}
 }
 
-#endif
+scheduler* sched_allocate_staircase ()
+{
+	int i;
+	scheduler* mst = yalloc(sizeof(scheduler));
+	scheduler_staircase* sched = yalloc(sizeof(scheduler_staircase));
+	sched->active = yalloc(sizeof(staircase_block));
+	sched->exhausted = yalloc(sizeof(staircase_block));
+	for (i = 0; i < LAYERS; i++)
+	{
+		sched->active->queues[i] = fifo_new();
+		sched->active->timeslices[i] = YARNS_TIMESLICE * 5;
+		sched->exhausted->queues[i] = fifo_new();
+		sched->exhausted->timeslices[i] = YARNS_TIMESLICE * 5;
+	}
+	assert(sizeof(unsigned long) == sizeof(void*));
+	mst->context = sched;
+	mst->deallocate = scheduler_staircase_deallocate;
+	mst->schedule = scheduler_staircase_schedule;
+	mst->select = scheduler_staircase_select;
+	mst->unschedule = scheduler_staircase_unschedule;
+	mst->reschedule = scheduler_staircase_reschedule;
+	return mst;
+}

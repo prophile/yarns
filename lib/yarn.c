@@ -24,6 +24,8 @@
 
 #define STACK_SIZE (YARNS_STACK_PAGES*4096)
 
+#define UNSCHEDULE ~0UL
+
 typedef struct _yarn yarn;
 
 static bool live = 0;
@@ -135,7 +137,7 @@ static void yarn_launcher ( yarn_launch_data* ld )
 	yfree(ld);
 	routine(udata);
 	DEBUG("yarn %p completed, yarn_context_set\n", active_yarn);
-	TTD.runtime = SCHEDULER_UNSCHEDULE;
+	TTD.runtime = UNSCHEDULE;
 	process_table[active_yarn->pid] = 0;
 	yarn_context_set(&(TTD.sched_context));
 }
@@ -239,7 +241,7 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata, int nice )
 	// insert it into the yarn list
 	pid = list_insert(active_yarn, nice);
 	if (live)
-		master_sched_insert(pid, prio_lookup(nice));
+		master_sched_schedule(pid, prio_lookup(nice));
 	return pid;
 }
 
@@ -354,10 +356,15 @@ static void yarn_processor ( unsigned long procID )
 #endif
 		activeJob.runtime = MIN(TTD.runtime, activeJob.runtime);
 		// if we're unscheduling, yfree up memory
-		if (TTD.runtime == SCHEDULER_UNSCHEDULE)
+		if (TTD.runtime == UNSCHEDULE)
 		{
+			master_sched_unschedule(procID, &activeJob);
 			deallocate_stack(TTD.yarn_current->stackBase);
 			yfree(TTD.yarn_current);
+		}
+		else
+		{
+			master_sched_reschedule(procID, &activeJob);
 		}
 		deadSleepTime = YARNS_DEAD_SLEEP_TIME;
 	}
@@ -413,7 +420,7 @@ void yarn_process ( unsigned long otherThreadCount )
 	// set up all the yarns in the scheduler
 	for (i = 1; i < maxpid; i++)
 	{
-		master_sched_insert(i, prio_lookup(process_table[i]->nice));
+		master_sched_schedule(i, prio_lookup(process_table[i]->nice));
 	}
 	live = 1;
 	DEBUG("starting with context API: %s\n", YARN_CONTEXT_API);

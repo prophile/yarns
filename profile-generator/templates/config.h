@@ -6,14 +6,6 @@
 #define YARNS_ENABLE_SMP
 #define YARNS_DEAD_SLEEP_TIME {$dead_sleep_time}
 
-// schedulers
-#define YARNS_SCHED_MULTILEVEL 1
-#define YARNS_SCHED_ROUND_ROBIN 2
-#define YARNS_SCHED_RANDOM 3
-#define YARNS_SCHED_RB 4
-#define YARNS_SCHED_STAIRCASE 5
-#define YARNS_SCHED_FAIR 6
-#define YARNS_SCHEDULER YARNS_SCHED_{$scheduler}
 // in µs
 #define YARNS_TIMESLICE {$timeslice}
 

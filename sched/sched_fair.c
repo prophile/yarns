@@ -5,8 +5,6 @@
 #include "config.h"
 #include "debug.h"
 
-#if YARNS_SCHEDULER == YARNS_SCHED_FAIR
-
 #define DEBUG_MODULE DEBUG_SCHEDULER
 
 #define SCHED_FAIR_MIN_GRANULARITY 50
@@ -22,25 +20,20 @@ struct _scheduler_task
 	float inverseWeight; // 1 / weighting
 };
 
-struct _scheduler
+typedef struct _scheduler_fair scheduler_fair;
+
+struct _scheduler_fair
 {
 	rbtree* processTree; // overall rbtree timeline
 	unsigned long timebaseOffset; // offset from expected end time (used to avoid collisions)
 	float load; // overall load (sum of weights)
 };
 
-scheduler* scheduler_init ()
+static void scheduler_fair_deallocate ( scheduler* sched )
 {
-	scheduler* sched = yalloc(sizeof(scheduler));
-	sched->processTree = rbtree_new();
-	sched->timebaseOffset = 0;
-	sched->load = 0.0f;
-	return sched;
-}
-
-void scheduler_free ( scheduler* sched )
-{
-	rbtree_free(sched->processTree);
+	scheduler_fair* fair = (scheduler_fair*)sched->context;
+	rbtree_free(fair->processTree);
+	yfree(fair);
 	yfree(sched);
 }
 
@@ -58,7 +51,7 @@ static float prio_to_weight ( scheduler_priority prio )
 	}
 }
 
-static void timeline_insert ( scheduler* sched, scheduler_task* task, unsigned long timebase )
+static void timeline_insert ( scheduler_fair* sched, scheduler_task* task, unsigned long timebase )
 {
 	// add a minimum granularity so we don't get everything crashing into itself
 	timebase += SCHED_FAIR_MIN_GRANULARITY;
@@ -73,8 +66,9 @@ static void timeline_insert ( scheduler* sched, scheduler_task* task, unsigned l
 	task->timebase = timebase;
 }
 
-void scheduler_insert ( scheduler* sched, unsigned long pid, scheduler_priority prio )
+static void scheduler_fair_schedule ( scheduler* mst, unsigned long pid, scheduler_priority prio )
 {
+	scheduler_fair* sched = (scheduler_fair*)mst->context;
 	scheduler_task* newTask;
 	// get the lowest time
 	unsigned long min = rbtree_empty(sched->processTree) ? 0 : rbtree_min(sched->processTree);
@@ -89,23 +83,36 @@ void scheduler_insert ( scheduler* sched, unsigned long pid, scheduler_priority 
 	timeline_insert(sched, newTask, min);
 }
 
-void scheduler_select ( scheduler* sched, scheduler_job* job )
+static void scheduler_fair_reschedule ( scheduler* mst, scheduler_job* job )
 {
+	scheduler_fair* sched = (scheduler_fair*)mst->context;
 	scheduler_task* lastTask = (scheduler_task*)job->data;
-	if (lastTask && job->runtime == SCHEDULER_UNSCHEDULE)
-	{
-		// unscheduling.. account for weight loss
-		sched->load -= lastTask->weight;
-		yfree(lastTask);
-	}
-	else if (lastTask)
+	if (lastTask)
 	{
 		// add used time and reinsert into the timeline
 		assert(lastTask->runtime >= job->runtime);
 		timeline_insert(sched, lastTask, lastTask->timebase + (lastTask->runtime - job->runtime) * lastTask->inverseWeight);
 		sched->timebaseOffset = 0;
 	}
-	if (job->next == SCHEDULER_WANT_IDLE || rbtree_empty(sched->processTree))
+}
+
+static void scheduler_fair_unschedule ( scheduler* mst, scheduler_job* job )
+{
+	scheduler_fair* sched = (scheduler_fair*)mst->context;
+	scheduler_task* lastTask = (scheduler_task*)job->data;
+	if (lastTask)
+	{
+		// unscheduling.. account for weight loss
+		sched->load -= lastTask->weight;
+		yfree(lastTask);
+	}
+}
+
+static void scheduler_fair_select ( scheduler* mst, scheduler_job* job )
+{
+	scheduler_fair* sched = (scheduler_fair*)mst->context;
+	scheduler_task* lastTask;
+	if (rbtree_empty(sched->processTree))
 	{
 		// no jobs
 		job->pid = 0;
@@ -135,4 +142,18 @@ void scheduler_select ( scheduler* sched, scheduler_job* job )
 	}
 }
 
-#endif
+scheduler* sched_allocate_fair ()
+{
+	scheduler* mst = yalloc(sizeof(scheduler));
+	scheduler_fair* sched = yalloc(sizeof(scheduler));
+	sched->processTree = rbtree_new();
+	sched->timebaseOffset = 0;
+	sched->load = 0.0f;
+	mst->context = sched;
+	mst->deallocate = scheduler_fair_deallocate;
+	mst->schedule = scheduler_fair_schedule;
+	mst->select = scheduler_fair_select;
+	mst->reschedule = scheduler_fair_reschedule;
+	mst->unschedule = scheduler_fair_unschedule;
+	return mst;
+}
