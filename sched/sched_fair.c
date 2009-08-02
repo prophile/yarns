@@ -9,7 +9,7 @@
 
 #define DEBUG_MODULE DEBUG_SCHEDULER
 
-#define SCHED_FAIR_MIN_GRANULARITY 10
+#define SCHED_FAIR_MIN_GRANULARITY 50
 
 typedef struct _scheduler_task scheduler_task;
 
@@ -63,7 +63,7 @@ static void timeline_insert ( scheduler* sched, scheduler_task* task, unsigned l
 	// add a minimum granularity so we don't get everything crashing into itself
 	timebase += SCHED_FAIR_MIN_GRANULARITY;
 	// add the offset
-	timebase += sched->timebaseOffset++;
+	timebase += (sched->timebaseOffset += SCHED_FAIR_MIN_GRANULARITY);
 	// avoid collisions
 	while (rbtree_search(sched->processTree, timebase, 0))
 		timebase++;

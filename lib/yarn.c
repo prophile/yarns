@@ -17,6 +17,7 @@
 #include "debug.h"
 #include <stdbool.h>
 #include "preempt.h"
+#include "timer.h"
 #include <string.h>
 
 #define DEBUG_MODULE DEBUG_YARNS
@@ -43,7 +44,7 @@ typedef struct _yarn_thread_data
 {
 	yarn_context_t sched_context;
 	yarn* yarn_current;
-	unsigned long start_time;
+	yarns_time_t start_time;
 	unsigned long runtime;
 	yarn_t next;
 } yarn_thread_data;
@@ -255,9 +256,9 @@ void yarn_yield ( yarn_t target )
 {
 	// ignore target for now
 	TTDGET();
-	unsigned long t = preempt_time();
-	unsigned long dt = TTD.start_time - t;
-	yarn_switch(TTD.runtime - dt, target);
+	yarns_time_t t = yarns_time();
+	yarns_time_t dt = TTD.start_time - t;
+	yarn_switch((unsigned long)(TTD.runtime - dt), target);
 }
 
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
@@ -330,13 +331,13 @@ static void yarn_processor ( unsigned long procID )
 		}
 		// set all the stuff up
 		TTD.yarn_current = process_table[activeJob.pid];
-		TTD.start_time = preempt_time();
+		TTD.start_time = yarns_time();
 		TTD.next = 0;
 		TTD.runtime = activeJob.runtime;
 		// swap contexts
 		DEBUG("yarn_context_swap to yarn: %p\n", TTD.yarn_current);
 #if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
-		preempt(preempt_time() + activeJob.runtime, procID);
+		preempt(yarns_time() + activeJob.runtime, procID);
 		preempt_enable();
 #endif
 		rc = yarn_context_swap(&(TTD.sched_context), &(TTD.yarn_current->context));
@@ -435,8 +436,8 @@ void yarn_process ( unsigned long otherThreadCount )
 void yarn_mark ()
 {
 	TTDGET();
-	unsigned long t = preempt_time();
-	unsigned long dt = TTD.start_time - t;
+	yarns_time_t t = yarns_time();
+	yarns_time_t dt = TTD.start_time - t;
 	if (dt > TTD.runtime)
 	{
 		yarn_switch(0, 0);

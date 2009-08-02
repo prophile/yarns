@@ -5,7 +5,7 @@ CFLAGS={$lib_cflags} $(INCLUDES)
 TEST_CFLAGS={$bin_cflags} $(INCLUDES)
 LDFLAGS={$ldflags}
 
-OBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o obj/context.o {if $context_asm}obj/context_asm.o{/if}
+OBJECTS=obj/pages.o obj/sched_multilevel.o obj/sched_roundrobin.o obj/yarn.o obj/smp_scheduler.o obj/sched_random.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_rb.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o obj/context.o {if $context_asm}obj/context_asm.o{/if} obj/timer.o
 
 test: obj/test.o libyarns.a
 	$(CXX) $(LDFLAGS) -o $@ $^
@@ -64,7 +64,7 @@ obj/alloc.o: system/alloc.c system/alloc.h system/pages.h lib/debug.h include/ya
 obj/rbtree.o: data/rbtree.cpp data/rbtree.h system/alloc.h include/yarns/config.h Makefile
 	$(CXX) $(CFLAGS) -c -o $@ $<
 
-obj/preempt.o: system/preempt.c system/preempt.h data/rbtree.h system/lock.h system/atomic.h include/yarns/config.h Makefile
+obj/preempt.o: system/preempt.c system/preempt.h data/rbtree.h system/lock.h system/atomic.h lib/timer.h include/yarns/config.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 obj/queue.o: data/queue.c data/queue.h system/alloc.h include/yarns/config.h Makefile
@@ -80,6 +80,9 @@ obj/context.o: context/{$context}/context.c context/{$context}/context.h Makefil
 obj/context_asm.o: context/{$context}/context.s Makefile
 	{$as} -g -c -o $@ $<
 {/if}
+
+obj/timer.o: lib/timer.c lib/timer.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
 	rm -f obj/*.o obj/*.s obj/*.bc test libyarns.a

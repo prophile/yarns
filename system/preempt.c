@@ -4,8 +4,12 @@
 #include "rbtree.h"
 #include "lock.h"
 #include "alloc.h"
+#include "timer.h"
 #include <stdio.h>
 #include "atomic.h"
+#include "config.h"
+
+#if YARNS_SYNERGY == YARNS_SYNERGY_PREEMPTIVE
 
 static volatile unsigned long preempt_disable_count = 0;
 preempt_handler preempt_handle = 0;
@@ -38,15 +42,6 @@ void preempt_init ( void )
 	lock_init(&preempt_lock);
 }
 
-unsigned long preempt_time ( void )
-{
-	unsigned long t;
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	t = (tv.tv_usec / 1000) + (tv.tv_sec * 1000);
-	return t - preempt_initial;
-}
-
 static inline void convert ( struct timeval* tv, unsigned long t )
 {
 	tv->tv_sec  = t / 1000;
@@ -55,18 +50,18 @@ static inline void convert ( struct timeval* tv, unsigned long t )
 
 static void reconfigure_timer ( void )
 {
-	unsigned long t, timestamp;
+	yarns_time_t t, timestamp;
 	struct itimerval value;
 	convert(&value.it_interval, 0);
 	if (rbtree_size(preempt_schedule) > 0)
 	{
 		timestamp = rbtree_min(preempt_schedule);
-		t = preempt_time();
+		t = yarns_time();
 		if (timestamp < t)
 			t = 0;
 		else
 			t = timestamp - t;
-		printf("preempting in %lu microseconds for target time = %lu (current time = %lu)\n", t, timestamp, preempt_time());
+		printf("preempting in %lu microseconds for target time = %lu (current time = %lu)\n", t, timestamp, yarns_time());
 		convert(&value.it_value, t);
 		rbtree_search(preempt_schedule, timestamp, (void**)&preempt_param);
 		signal(SIGVTALRM, preempt_signal);
@@ -121,3 +116,5 @@ void preempt_cancel ( unsigned long timestamp )
 	reconfigure_timer();
 	lock_unlock(&preempt_lock);
 }
+
+#endif

@@ -17,9 +17,9 @@ Profiles:
   You can also from there specify additional definitions. Most of the available definitions you will not need to modify, but ones you might are to modify are:
     Scheduler: scheduler=NAME (name is one of the ones listed in the Schedulers section below)
     Synergy method: synergy=NAME (name is one of the ones listed in the Synergy methods below)
-    Timeslice: timeslice=n (n is the standard timeslice in ms)
-    Dead sleep time: dead_sleep_time=n (n is the dead sleep time in ms, ie the time that a processor will sleep if it has no job assigned)
-    Stack size: stack_size=n (n is the stack size, in kb, assigned to each yarn. If this is too small, you will get very hard-to-debug problems. If this is too large, you will eat up masses of memory. Unless you know what you are doing, leave this at the default of 32)
+    Timeslice: timeslice=n (n is the standard timeslice in µs)
+    Dead sleep time: dead_sleep_time=n (n is the dead sleep time in µs, ie the time that a processor will sleep if it has no job assigned)
+    Stack size: stack_size=n (n is the stack size, in kb, assigned to each yarn. If this is too small, you will get very hard-to-debug problems. If this is too large, you will eat up tonnes of memory. Unless you know what you are doing, leave this at the default of 32)
 
 Schedulers:
   MULTILEVEL - a simple multi-level scheduler with support for priorities

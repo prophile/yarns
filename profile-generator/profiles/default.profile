@@ -1,6 +1,6 @@
 # Scheduler:
-dead_sleep_time = 10
-timeslice = 10
+dead_sleep_time = 100
+timeslice = 1000
 scheduler = STAIRCASE
 synergy = COOPERATIVE
 memory_access_control = 0
