@@ -44,10 +44,18 @@ function add_profile ( &$profile, $name )
 	}
 }
 
+function file_hash ( $file )
+{
+	if (file_exists($file))
+		return md5_file($file);
+	else
+		return '';
+}
+
 function writeout ( $data, $file )
 {
 	$md5d = md5($data);
-	$md5f = md5_file($file);
+	$md5f = file_hash($file);
 	$bf = basename($file);
 	if ($md5d == $md5f)
 	{
@@ -63,7 +71,7 @@ function writeout ( $data, $file )
 $config = new profile($template_dir . '/config.h');
 foreach ($profiles as $prof)
 	add_profile($config, $prof);
-writeout($config->generate(), "$base_dir/lib/config.h");
+writeout($config->generate(), "$base_dir/include/yarns/config.h");
 
 $makefile = new profile($template_dir . '/Makefile');
 foreach ($profiles as $prof)
