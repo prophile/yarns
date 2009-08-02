@@ -1,0 +1,26 @@
+#!/usr/bin/env php
+<?php
+
+$argv0 = array_shift($argv);
+
+if (count($argv) == 0 || count($argv) == 1)
+{
+	echo "Usage: $argv0 base-config arches\n";
+	exit(1);
+}
+
+$base = array_shift($argv);
+$arches = $argv;
+$lipoes = array();
+
+foreach ($arches as $arch)
+{
+	system("./make-profile $base-$arch");
+	system("make clean");
+	system("make -j2 libyarns.a");
+	system("mv libyarns.a libyarns-$arch.a");
+	$lipoes[] = "libyarns-$arch.a";
+}
+
+system("lipo -create -output libyarns.a " . implode(' ', $lipoes));
+system("rm -i " . implode(' ', $lipoes));
