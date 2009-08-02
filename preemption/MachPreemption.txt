@@ -1,0 +1,15 @@
+Preemption support in yarns on Darwin!
+
+Get mach port from pthreads for target thread! PS mach_port_t = thread_act_t
+
+Use that for the thread_act.h functions thread_suspend and thread_resume.
+
+Wait until state is not TH_STATE_RUNNING (busy wait)
+
+Need to get/set state from there! Hm hm hm hm hm HARD PROBLEM D:
+
+It's a START, that's what counts
+
+Figure out usage of thread_get_state and thread_set_state
+
+Documentation! it's in xnu/osfmk/man in HTML format
