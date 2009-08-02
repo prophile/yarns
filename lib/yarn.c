@@ -348,6 +348,9 @@ static void yarn_processor ( unsigned long procID )
 		if (rc == 0)
 			perror("yarn_context_swap failed");
 		// set the runtime
+#ifndef MIN
+#define MIN(a,b) ((a)<(b)?(a):(b))
+#endif
 		activeJob.runtime = MIN(TTD.runtime, activeJob.runtime);
 		// if we're unscheduling, yfree up memory
 		if (TTD.runtime == SCHEDULER_UNSCHEDULE)
