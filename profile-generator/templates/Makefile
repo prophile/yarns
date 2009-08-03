@@ -47,7 +47,7 @@ obj/sched_staircase.o: sched/sched_staircase.c sched/scheduler.h lib/alloc.h dat
 obj/sched_fair.o: sched/sched_fair.c sched/scheduler.h lib/alloc.h data/rbtree.h lib/debug.h include/yarns/config.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-obj/yarn.o: lib/yarn.c include/yarns/yarn.h sched/master_scheduler.h include/yarns/config.h sched/scheduler.h system/pages.h lib/alloc.h lib/debug.h context/{$context}/context.h Makefile
+obj/yarn.o: lib/yarn.c include/yarns/yarn.h sched/master_scheduler.h include/yarns/config.h sched/scheduler.h lib/pool.h system/pages.h lib/alloc.h lib/debug.h context/{$context}/context.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 obj/master_scheduler.o: sched/master_scheduler.c sched/master_scheduler.h sched/scheduler.h include/yarns/config.h system/lock.h system/atomic.h lib/debug.h Makefile
@@ -79,7 +79,7 @@ obj/context_asm.o: context/{$context}/context.s Makefile
 obj/timer.o: lib/timer.c lib/timer.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-obj/pool.o: lib/pool.c lib/pool.h lib/alloc.h include/yarns/config.h Makefile
+obj/pool.o: lib/pool.c lib/pool.h lib/alloc.h lib/debug.h include/yarns/config.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:

@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include "preempt.h"
 #include "timer.h"
+#include "pool.h"
 #include <string.h>
 
 #define DEBUG_MODULE DEBUG_YARNS
@@ -59,6 +60,17 @@ static void TTDINIT_MAIN ()
 	int rc;
 	rc = pthread_key_create(&_ttd, 0);
 	assert(rc == 0);
+}
+
+static pool* yarn_pool = 0;
+
+static pool* get_yarn_pool ()
+{
+	if (!yarn_pool)
+	{
+		yarn_pool = pool_create(sizeof(yarn), YARNS_MAX_PROCESSES);
+	}
+	return yarn_pool;
 }
 
 static void TTDINIT()
@@ -230,7 +242,8 @@ yarn_t yarn_new ( void (*routine)(void*), void* udata, int nice )
 	yarn* active_yarn;
 	yarn_t pid;
 	//prepare_context(0);
-	active_yarn = (yarn*)yalloc(sizeof(yarn));
+	pool* p = get_yarn_pool();
+	active_yarn = (yarn*)pool_allocate(p);
 	assert(active_yarn);
 	// prepare the context
 	init_context(&active_yarn->context);
@@ -360,7 +373,7 @@ static void yarn_processor ( unsigned long procID )
 		{
 			master_sched_unschedule(procID, &activeJob);
 			deallocate_stack(TTD.yarn_current->stackBase);
-			yfree(TTD.yarn_current);
+			pool_free(get_yarn_pool(), TTD.yarn_current);
 		}
 		else
 		{

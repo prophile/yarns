@@ -1,14 +1,20 @@
 #include "pool.h"
 #include "alloc.h"
 #include "atomic.h"
+#include "debug.h"
+#include <assert.h>
+
+#define DEBUG_MODULE DEBUG_POOL_ALLOCATOR
 
 typedef struct _subpool subpool;
 
 struct _pool
 {
 	unsigned long size;
+	unsigned long slots;
 	unsigned long nsubpools;
 	subpool* subpools;
+	pool* chain;
 };
 
 struct _subpool
@@ -32,11 +38,16 @@ pool* pool_create ( unsigned long size, unsigned long slots )
 	unsigned long sizeTotal;
 	unsigned long nsubpools = slots + SLOTS_PER_SUBPOOL - 1;
 	nsubpools /= SLOTS_PER_SUBPOOL;
-	sizeTotal = sizeof(pool) + sizeof(subpool)*nsubpools + size*SLOTS_PER_SUBPOOL*nsubpools;
+	assert(size);
+	assert(slots);
+	sizeTotal = sizeof(pool) + (sizeof(subpool)*nsubpools) + (size*SLOTS_PER_SUBPOOL*nsubpools);
 	data = yalloc(sizeTotal);
+	assert(data);
 	p = (pool*)data;
 	data += sizeof(pool);
 	p->size = size;
+	p->slots = slots;
+	p->chain = 0;
 	p->nsubpools = nsubpools;
 	p->subpools = (subpool*)data;
 	data += sizeof(subpool)*nsubpools;
@@ -46,36 +57,62 @@ pool* pool_create ( unsigned long size, unsigned long slots )
 		p->subpools[i].data = data;
 		data += SLOTS_PER_SUBPOOL*size;
 	}
+	return p;
 }
 
 void pool_destroy ( pool* p )
 {
+	if (!p)
+		return;
+	if (p->chain)
+		pool_destroy(p->chain); // not tail recursive, unfortunately, but shouldn't generally be very deep at all
 	yfree(p);
 }
 
-void* pool_allocate ( pool* p )
+static void* allocate ( pool* root, pool* p )
 {
-	unsigned long availFlags, leadingZeroes, mask, newFlags;
+	unsigned long availFlags, leadingZeroes, mask, newFlags, bitPosition;
 	int i;
+	void* ptr;
+	assert(p);
 	for (i = 0; i < p->nsubpools; i++)
 	{
 		if ((availFlags = p->subpools[i].availFlags) != 0)
 		{
 			leadingZeroes = clz(availFlags);
-			mask = 1 << (SLOTS_PER_SUBPOOL - leadingZeroes);
+			bitPosition = (SLOTS_PER_SUBPOOL - leadingZeroes) - 1;
+			mask = 1 << bitPosition;
 			newFlags = availFlags & ~mask;
 			if (!atomic_cswap_value(&(p->subpools[i].availFlags), availFlags, newFlags))
-				return pool_allocate(p); // restart the process. This is tail-recursive so we don't have to worry about stack overflows
-			return (void*)(p->subpools[i].data + (p->size * leadingZeroes));
+				return allocate(root, root); // restart the process. This is tail-recursive so we don't have to worry about stack overflows
+			ptr = (p->subpools[i].data + (p->size * bitPosition));
+			DEBUG("pool %p allocated block %p\n", p, ptr);
+			return ptr;
 		}
 	}
-	return 0;
+	if (p->chain)
+	{
+		return allocate(root, p->chain);
+	}
+	else
+	{
+		pool* chained = pool_create(p->size, p->slots);
+		if (!atomic_cswap_pointer((void *volatile*)&(p->chain), 0, chained))
+			pool_destroy(chained);
+		return allocate(root, chained);
+	}
+}
+
+void* pool_allocate ( pool* p )
+{
+	return allocate(p, p);
 }
 
 void pool_free ( pool* p, void* ptr )
 {
 	unsigned char* cptr = (unsigned char*)ptr;
 	int i;
+	assert(p);
 	if (ptr == 0)
 		return; // early-exit for null pointers.
 	for (i = 0; i < p->nsubpools; i++)
@@ -97,4 +134,7 @@ void pool_free ( pool* p, void* ptr )
 			}
 		}
 	}
+	// not in this pool, if it's chained try the next in the chain
+	if (p->chain)
+		pool_free(p->chain, ptr);
 }
