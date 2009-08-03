@@ -36,9 +36,9 @@ static inline unsigned long atomic_add ( volatile unsigned long* ptr, long amoun
 static inline bool atomic_cswap_value ( volatile unsigned long* ptr, unsigned long oldValue, unsigned long newValue )
 {
 #ifdef __LP64__
-	return OSAtomicCompareAndSwap64(oldValue, newValue, (int64_t volatile*)ptr);
+	return OSAtomicCompareAndSwap64Barrier(oldValue, newValue, (int64_t volatile*)ptr);
 #else
-	return OSAtomicCompareAndSwap32(oldValue, newValue, (int32_t volatile*)ptr);
+	return OSAtomicCompareAndSwap32Barrier(oldValue, newValue, (int32_t volatile*)ptr);
 #endif
 }
 
