@@ -18,6 +18,7 @@
 #include <stdbool.h>
 #include "preempt.h"
 #include "timer.h"
+#include "yarn-internal.h"
 #include "pool.h"
 #include <string.h>
 
@@ -37,6 +38,9 @@ struct _yarn
 	unsigned long pid;
 	int nice;
 	void* stackBase;
+	bool isSuspended;
+	unsigned long suspensionCore;
+	scheduler_job suspensionJob;
 };
 
 static yarn* process_table[YARNS_MAX_PROCESSES] = { 0 };
@@ -50,6 +54,7 @@ typedef struct _yarn_thread_data
 	yarns_time_t start_time;
 	unsigned long runtime;
 	yarn_t next;
+	bool shouldSuspend;
 } yarn_thread_data;
 #ifdef YARNS_ENABLE_SMP
 pthread_key_t _ttd;
@@ -324,6 +329,7 @@ static void yarn_processor ( unsigned long procID )
 	activeJob.priority = SCHED_PRIO_NORMAL;
 	while (!breakProcessor)
 	{
+		TTD.shouldSuspend = 0;
 		master_sched_select(procID, &activeJob);
 		if (activeJob.pid == 0)
 		{
@@ -375,6 +381,12 @@ static void yarn_processor ( unsigned long procID )
 			deallocate_stack(TTD.yarn_current->stackBase);
 			pool_free(get_yarn_pool(), TTD.yarn_current);
 		}
+		else if (TTD.shouldSuspend)
+		{
+			TTD.yarn_current->isSuspended = 1;
+			TTD.yarn_current->suspensionCore = procID;
+			memcpy(&(TTD.yarn_current->suspensionJob), &activeJob, sizeof(activeJob));
+		}
 		else
 		{
 			master_sched_reschedule(procID, &activeJob);
@@ -412,6 +424,15 @@ static unsigned long numprocs ()
 #endif
 }
 #endif
+
+void yarn_resume ( yarn_t yarn )
+{
+	if (process_table[yarn]->isSuspended)
+	{
+		process_table[yarn]->isSuspended = 0;
+		master_sched_reschedule(process_table[yarn]->suspensionCore, &(process_table[yarn]->suspensionJob));
+	}
+}
 
 void yarn_process ( unsigned long otherThreadCount, int primaryScheduler, int secondaryScheduler )
 {

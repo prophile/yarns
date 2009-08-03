@@ -5,7 +5,7 @@ CFLAGS={$lib_cflags} $(INCLUDES) -DYARNS_CURRENT_VERSION=\"`git describe`\"
 TEST_CFLAGS={$bin_cflags} $(INCLUDES)
 LDFLAGS={$ldflags} {if $strip}-exported_symbols_list exports.txt{/if}{if $linux_style_strip}--retain-symbols-file exports.txt{/if}
 
-COBJECTS=obj/pages.o obj/sched_roundrobin.o obj/yarn.o obj/master_scheduler.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o obj/context.o obj/timer.o obj/pool.o
+COBJECTS=obj/pages.o obj/sched_roundrobin.o obj/yarn.o obj/master_scheduler.o obj/sched_staircase.o obj/alloc.o obj/rbtree.o obj/sched_fair.o obj/preempt.o obj/queue.o obj/queue_atomic.o obj/context.o obj/timer.o obj/pool.o obj/wait_graph.o
 AOBJECTS={if $context_asm}obj/context_asm.o{/if}
 
 test: obj/test.o libyarns.a
@@ -47,10 +47,13 @@ obj/sched_staircase.o: sched/sched_staircase.c sched/scheduler.h lib/alloc.h dat
 obj/sched_fair.o: sched/sched_fair.c sched/scheduler.h lib/alloc.h data/rbtree.h lib/debug.h include/yarns/config.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-obj/yarn.o: lib/yarn.c include/yarns/yarn.h sched/master_scheduler.h include/yarns/config.h sched/scheduler.h lib/pool.h system/pages.h lib/alloc.h lib/debug.h context/{$context}/context.h Makefile
+obj/yarn.o: lib/yarn.c include/yarns/yarn.h sched/master_scheduler.h include/yarns/config.h sched/scheduler.h lib/pool.h lib/yarn-internal.h system/pages.h lib/alloc.h lib/debug.h context/{$context}/context.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 obj/master_scheduler.o: sched/master_scheduler.c sched/master_scheduler.h sched/scheduler.h include/yarns/config.h system/lock.h system/atomic.h lib/debug.h Makefile
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+obj/wait_graph.o: lib/wait_graph.c lib/wait_graph.h lib/timer.h include/yarns/yarn.h lib/yarn-internal.h lib/alloc.h system/pages.h include/yarns/config.h Makefile
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 obj/alloc.o: lib/alloc.c lib/alloc.h system/pages.h lib/debug.h include/yarns/config.h Makefile
