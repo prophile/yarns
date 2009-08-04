@@ -51,6 +51,15 @@ static wait_graph* wg;
 static unsigned long coreCount;
 static unsigned long wgProcResponsibility = 0;
 
+static yarn** _ptable ( yarn_t pid )
+{
+	if (!process_table)
+		process_table = yalloc(sizeof(yarn*) * YARNS_MAX_PROCESSES);
+	return &(process_table[pid]);
+}
+
+#define PTABLE(i) (*_ptable(i))
+
 typedef struct _yarn_thread_data
 {
 	yarn_context_t sched_context;
@@ -135,9 +144,7 @@ static yarn_t list_insert ( yarn* active_yarn, int nice )
 	yarn_t pid = maxpid++;
 	DEBUG("pid(%d)=yarn(%p)\n", pid, active_yarn);
 	assert(maxpid < YARNS_MAX_PROCESSES);
-	if (!process_table)
-		process_table = yalloc(sizeof(yarn*) * YARNS_MAX_PROCESSES);
-	process_table[pid] = active_yarn;
+	PTABLE(pid) = active_yarn;
 	active_yarn->pid = pid;
 	active_yarn->nice = nice;
 	return pid;
@@ -161,7 +168,7 @@ static void yarn_launcher ( yarn_launch_data* ld )
 	routine(udata);
 	DEBUG("yarn %p completed, yarn_context_set\n", active_yarn);
 	TTD.runtime = UNSCHEDULE;
-	process_table[active_yarn->pid] = 0;
+	PTABLE(active_yarn->pid) = 0;
 	yarn_context_set(&(TTD.sched_context));
 }
 
@@ -358,14 +365,14 @@ static void yarn_processor ( unsigned long procID )
 			usleep(deadSleepTime);
 			continue;
 		}
-		if (!process_table[activeJob.pid])
+		if (!PTABLE(activeJob.pid))
 		{
 			DEBUG("got dead pid %lu\n", activeJob.pid);
 			usleep(deadSleepTime);
 			continue;
 		}
 		// set all the stuff up
-		TTD.yarn_current = process_table[activeJob.pid];
+		TTD.yarn_current = PTABLE(activeJob.pid);
 		TTD.start_time = yarns_time();
 		TTD.next = 0;
 		TTD.runtime = activeJob.runtime;
@@ -441,10 +448,10 @@ static unsigned long numprocs ()
 
 void yarn_resume ( yarn_t yarn )
 {
-	if (process_table[yarn]->isSuspended)
+	if (PTABLE(yarn)->isSuspended)
 	{
-		process_table[yarn]->isSuspended = 0;
-		master_sched_reschedule(process_table[yarn]->suspensionCore, &(process_table[yarn]->suspensionJob));
+		PTABLE(yarn)->isSuspended = 0;
+		master_sched_reschedule(PTABLE(yarn)->suspensionCore, &(PTABLE(yarn)->suspensionJob));
 	}
 }
 
@@ -464,14 +471,12 @@ void yarn_process ( unsigned long otherThreadCount, int primaryScheduler, int se
 	preempt_init();
 	preempt_handle = yarn_preempt_handle;
 #endif
-	if (!process_table)
-			process_table = yalloc(sizeof(yarn*) * YARNS_MAX_PROCESSES);
 	TTDINIT_MAIN();
 	wg = wait_graph_new();
 	// set up all the yarns in the scheduler
 	for (i = 1; i < maxpid; i++)
 	{
-		master_sched_schedule(i, prio_lookup(process_table[i]->nice));
+		master_sched_schedule(i, prio_lookup(PTABLE(i)->nice));
 	}
 	live = 1;
 	DEBUG("starting with context API: %s\n", YARN_CONTEXT_API);
