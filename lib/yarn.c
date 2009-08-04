@@ -522,6 +522,19 @@ unsigned long yarn_next_token ()
 	return tok;
 }
 
+static void suspend ()
+{
+	TTDGET();
+	TTD.shouldSuspend = 1;
+	yarns_time_t t = yarns_time();
+	yarns_time_t dt = TTD.start_time - t;
+	DEBUG("suspend() called\n");
+	if (dt > TTD.runtime)
+		yarn_switch(0, 0);
+	else
+		yarn_switch(dt, 0);
+}
+
 void yarn_suspend_on_tokens ( const unsigned long* tokens, unsigned long ntok )
 {
 	yarn_t currentYarn;
@@ -535,6 +548,7 @@ void yarn_suspend_on_tokens ( const unsigned long* tokens, unsigned long ntok )
 		wait_graph_insert_token(wg, currentYarn, tokens[i]);
 	}
 	wait_graph_unlock(wg);
+	suspend();
 }
 
 void yarn_suspend_on_time ( unsigned long usecs )
@@ -547,10 +561,12 @@ void yarn_suspend_on_time ( unsigned long usecs )
 	wait_graph_insert(wg, currentYarn);
 	wait_graph_insert_time(wg, currentYarn, yarns_time() + usecs);
 	wait_graph_unlock(wg);
+	suspend();
 }
 
 void yarn_signal_token ( unsigned long token )
 {
+	DEBUG("signal: %lu\n", token);
 	wait_graph_lock(wg);
 	wait_graph_signal(wg, token);
 	wait_graph_unlock(wg);

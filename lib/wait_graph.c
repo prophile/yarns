@@ -147,7 +147,8 @@ void wait_graph_insert ( wait_graph* graph, yarn_t yarn )
 	entry->target = yarn;
 	entry->ndeps = 0;
 	entry->next = graph->firstTask;
-	graph->firstTask->prev = entry;
+	if (graph->firstTask)
+		graph->firstTask->prev = entry;
 	graph->firstTask = entry;
 	entry->prev = 0;
 }

@@ -8,6 +8,7 @@
 #include "sync.h"
 
 yarn_lock_t yl;
+unsigned long tok = 0;
 
 static void myRoutine1 ( void* param )
 {
@@ -19,9 +20,9 @@ static void myRoutine1 ( void* param )
 static void myRoutine2 ( void* param )
 {
 	printf("Long-running operation, lol?\n");
-	yarn_lock_lock(&yl);
-	sleep(5);
-	yarn_lock_unlock(&yl);
+	tok = yarn_next_token();
+	yarn_suspend_on_time(5000000);
+	yarn_signal_token(tok);
 	printf("Finished eet!\n");
 }
 
@@ -33,9 +34,7 @@ static void yarnify ( unsigned long n )
 static void quit ( void* p )
 {
 	printf("Entered quit operation!\n");
-	yarn_lock_lock(&yl);
 	exit(0);
-	yarn_lock_unlock(&yl);
 }
 
 int main ( int argc, char** argv )
