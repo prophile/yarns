@@ -36,7 +36,7 @@ static bool live = 0;
 struct _yarn
 {
 	yarn_context_t context;
-	unsigned long pid;
+	yarn_t pid;
 	int nice;
 	void* stackBase;
 	bool isSuspended;
@@ -511,4 +511,47 @@ const char* yarns_version ()
 #else
 	return "?";
 #endif
+}
+
+unsigned long yarn_next_token ()
+{
+	unsigned long tok;
+	wait_graph_lock(wg);
+	tok = wait_graph_next_token(wg);
+	wait_graph_unlock(wg);
+	return tok;
+}
+
+void yarn_suspend_on_tokens ( const unsigned long* tokens, unsigned long ntok )
+{
+	yarn_t currentYarn;
+	unsigned long i;
+	TTDGET();
+	currentYarn = TTD.yarn_current->pid;
+	wait_graph_lock(wg);
+	wait_graph_insert(wg, currentYarn);
+	for (i = 0; i < ntok; i++)
+	{
+		wait_graph_insert_token(wg, currentYarn, tokens[i]);
+	}
+	wait_graph_unlock(wg);
+}
+
+void yarn_suspend_on_time ( unsigned long usecs )
+{
+	yarn_t currentYarn;
+	unsigned long i;
+	TTDGET();
+	currentYarn = TTD.yarn_current->pid;
+	wait_graph_lock(wg);
+	wait_graph_insert(wg, currentYarn);
+	wait_graph_insert_time(wg, currentYarn, yarns_time() + usecs);
+	wait_graph_unlock(wg);
+}
+
+void yarn_signal_token ( unsigned long token )
+{
+	wait_graph_lock(wg);
+	wait_graph_signal(wg, token);
+	wait_graph_unlock(wg);
 }

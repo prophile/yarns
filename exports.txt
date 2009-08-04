@@ -15,3 +15,7 @@ _yarns_atomic_queue_new
 _yarns_atomic_queue_delete
 _yarns_atomic_queue_push
 _yarns_atomic_queue_pop
+_yarn_next_token
+_yarn_suspend_on_tokens
+_yarn_suspend_on_time
+_yarn_signal_token

@@ -16,4 +16,11 @@ void yarn_process ( unsigned long otherThreadCount, int primaryScheduler, int se
 void yarn_mark ();
 const char* yarns_version ();
 
+unsigned long yarn_next_token ();
+void yarn_suspend_on_tokens ( const unsigned long* token, unsigned long ntok );
+inline static void yarn_suspend_on_token ( unsigned long token )
+	{ yarn_suspend_on_tokens(&token, 1); }
+void yarn_suspend_on_time ( unsigned long usecs );
+void yarn_signal_token ( unsigned long token );
+
 #endif
