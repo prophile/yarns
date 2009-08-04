@@ -16,11 +16,11 @@ libyarns.a: obj/ymain.o
 	
 {ifnot $lto}
 obj/ymain.o: $(COBJECTS) $(AOBJECTS)
-	ld -r $^ -o $@
+	ld $(LDFLAGS) -r $^ -o $@
 {/ifnot}
 {if $lto}
 obj/ymain.o: obj/libyarns.o $(AOBJECTS)
-	ld -r $^ -o $@
+	ld $(LDFLAGS) -r $^ -o $@
 
 obj/libyarns.o: obj/libyarns.s
 	{$as} {$asflags} -o $@ $<

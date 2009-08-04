@@ -3,14 +3,7 @@ _yarn_yield
 _yarn_process
 _yarn_current
 _yarn_mark
-_yarn_lock_init
-_yarn_lock_lock
-_yarn_lock_unlock
-_yarn_rwlock_init
-_yarn_rwlock_read_lock
-_yarn_rwlock_read_unlock
-_yarn_rwlock_write_lock
-_yarn_rwlock_write_unlock
+_yarns_version
 _yarns_atomic_queue_new
 _yarns_atomic_queue_delete
 _yarns_atomic_queue_push
