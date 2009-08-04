@@ -21,6 +21,7 @@
 #include "yarn-internal.h"
 #include "pool.h"
 #include <string.h>
+#include "wait_graph.h"
 
 #define DEBUG_MODULE DEBUG_YARNS
 
@@ -46,6 +47,9 @@ struct _yarn
 static yarn* process_table[YARNS_MAX_PROCESSES] = { 0 };
 static int maxpid = 1;
 static pthread_t threads[32];
+static wait_graph* wg;
+static unsigned long coreCount;
+static unsigned long wgProcResponsibility = 0;
 
 typedef struct _yarn_thread_data
 {
@@ -330,11 +334,19 @@ static void yarn_processor ( unsigned long procID )
 	while (!breakProcessor)
 	{
 		TTD.shouldSuspend = 0;
+		if (procID == wgProcResponsibility)
+		{
+			wait_graph_lock(wg);
+			wait_graph_time_process(wg);
+			wait_graph_unlock(wg);
+			wgProcResponsibility++;
+			wgProcResponsibility %= coreCount;
+		}
 		master_sched_select(procID, &activeJob);
 		if (activeJob.pid == 0)
 		{
 			usleep(deadSleepTime);
-			deadSleepTime *= 2;
+			deadSleepTime += (deadSleepTime / 2);
 			continue;
 		}
 		DEBUG("job %lu @ proc %d (rt: %lu us)\n", activeJob.pid, (int)procID, activeJob.runtime);
@@ -451,6 +463,7 @@ void yarn_process ( unsigned long otherThreadCount, int primaryScheduler, int se
 	preempt_handle = yarn_preempt_handle;
 #endif
 	TTDINIT_MAIN();
+	wg = wait_graph_new();
 	// set up all the yarns in the scheduler
 	for (i = 1; i < maxpid; i++)
 	{
@@ -469,6 +482,7 @@ void yarn_process ( unsigned long otherThreadCount, int primaryScheduler, int se
 	}
 #endif
 	threads[i] = pthread_self();
+	coreCount = nprocs;
 	// run the primary thread
 	yarn_processor(0);
 }
