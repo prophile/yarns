@@ -22,6 +22,7 @@
 #include "pool.h"
 #include <string.h>
 #include "wait_graph.h"
+#include "rbtree.h"
 
 #define DEBUG_MODULE DEBUG_YARNS
 
@@ -44,7 +45,14 @@ struct _yarn
 	scheduler_job suspensionJob;
 };
 
-static yarn** process_table = NULL;
+#define PROCESSES_PER_BLOCK 64
+
+typedef struct _process_block
+{
+	yarn* block[PROCESSES_PER_BLOCK];
+} process_block;
+
+static rbtree* process_block_tree;
 static int maxpid = 1;
 static pthread_t threads[32];
 static wait_graph* wg;
@@ -53,9 +61,18 @@ static unsigned long wgProcResponsibility = 0;
 
 static yarn** _ptable ( yarn_t pid )
 {
-	if (!process_table)
-		process_table = yalloc(sizeof(yarn*) * YARNS_MAX_PROCESSES);
-	return &(process_table[pid]);
+	unsigned long major, minor;
+	process_block* block;
+	if (!process_block_tree)
+		process_block_tree = rbtree_new();
+	major = pid / PROCESSES_PER_BLOCK;
+	minor = pid % PROCESSES_PER_BLOCK;
+	if (!rbtree_search(process_block_tree, major, (void**)&block))
+	{
+		block = yalloc(sizeof(process_block));
+		rbtree_insert(process_block_tree, major, block);
+	}
+	return &(block->block[minor]);
 }
 
 #define PTABLE(i) (*_ptable(i))
