@@ -44,7 +44,7 @@ struct _yarn
 	scheduler_job suspensionJob;
 };
 
-static yarn* process_table[YARNS_MAX_PROCESSES] = { 0 };
+static yarn** process_table = NULL;
 static int maxpid = 1;
 static pthread_t threads[32];
 static wait_graph* wg;
@@ -135,6 +135,8 @@ static yarn_t list_insert ( yarn* active_yarn, int nice )
 	yarn_t pid = maxpid++;
 	DEBUG("pid(%d)=yarn(%p)\n", pid, active_yarn);
 	assert(maxpid < YARNS_MAX_PROCESSES);
+	if (!process_table)
+		process_table = yalloc(sizeof(yarn*) * YARNS_MAX_PROCESSES);
 	process_table[pid] = active_yarn;
 	active_yarn->pid = pid;
 	active_yarn->nice = nice;
@@ -462,6 +464,8 @@ void yarn_process ( unsigned long otherThreadCount, int primaryScheduler, int se
 	preempt_init();
 	preempt_handle = yarn_preempt_handle;
 #endif
+	if (!process_table)
+			process_table = yalloc(sizeof(yarn*) * YARNS_MAX_PROCESSES);
 	TTDINIT_MAIN();
 	wg = wait_graph_new();
 	// set up all the yarns in the scheduler
