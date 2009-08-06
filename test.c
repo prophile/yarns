@@ -44,13 +44,13 @@ int main ( int argc, char** argv )
 	printf("yarns: %s\n", yarns_version());
 	yarn_lock_init(&yl);
 	//stress_test_big_allocator();
-	for (i = 0; i < 5; i++)
+	for (i = 0; i < 10000; i++)
 	{
-		if (i == 3)
+		if (i == 5)
 			yarn_new(myRoutine2, 0, 0);
 		yarnify(i);
 	}
-	yarn_new(quit, 0, 14);
+	//yarn_new(quit, 0, 14);
 	yarn_process (0, YARNS_SCHEDULER_COMPLETELY_FAIR, YARNS_SCHEDULER_ROUND_ROBIN);
 	
 	return 0;
