@@ -5,6 +5,7 @@
 #include "alloc.h"
 #include <assert.h>
 #include "debug.h"
+#include "timer.h"
 #include <stdbool.h>
 
 #ifdef YARNS_ENABLE_SMP
@@ -17,6 +18,10 @@ static scheduler** schedulers;
 static unsigned long* single_jobs;
 static unsigned long* jobcounts;
 static int secSchedType;
+static yarns_time_t lastAccounting = 0;
+
+#define ACCOUNTING_PERIOD 5000000
+#define ACCOUNTING_SHIFTS 2
 
 void master_sched_init ( unsigned long procs, int prim, int sec )
 {
@@ -118,16 +123,14 @@ static void job_hoist ( unsigned long src, unsigned long dst )
 	}
 }
 
-static bool rebalance ( unsigned long target )
+
+
+static void rebalance ( unsigned long src, unsigned long target )
 {
-	unsigned long src = select_core_most_load();
 	lock_lock(locks + src);
 	lock_lock(locks + target);
-	if (jobcounts[src] > 2)
-	{
-		while (jobcounts[src] > jobcounts[target])
-			job_hoist(src, target);
-	}
+	while (jobcounts[src] > jobcounts[target])
+		job_hoist(src, target);
 	lock_unlock(locks + src);
 	lock_unlock(locks + target);
 }
@@ -189,7 +192,22 @@ void master_sched_reschedule ( unsigned long core, scheduler_job* job )
 
 void master_sched_select ( unsigned long core, scheduler_job* job )
 {
-	unsigned c = core;
+	if (nprocs > 1)
+	{
+		yarns_time_t newTime = yarns_time();
+		int i;
+		if (lastAccounting + ACCOUNTING_PERIOD < newTime)
+		{
+			unsigned long most, least;
+			lastAccounting = newTime;
+			for (i = 0; i < ACCOUNTING_SHIFTS; i++)
+			{
+				most = select_core_most_load();
+				least = select_core_least_load();
+				rebalance(most, least);
+			}
+		}
+	}
 	if (single_jobs[core])
 	{
 		job->pid = single_jobs[core];
@@ -198,21 +216,7 @@ void master_sched_select ( unsigned long core, scheduler_job* job )
 		job->priority = SCHED_PRIO_TITANIC;
 		return;
 	}
-	doselect(c, job);
-	if (job->pid == 0)
-	{
-		// no job found, designate this core for receiving jobs
-		rebalance(c);
-		doselect(c, job);
-	}
-	else
-	{
-		//DEBUG("got job %lu for core %lu\n", job->pid, core);
-	}
-	if (job->pid == 0)
-	{
-		job->runtime = 0;
-	}
+	doselect(core, job);
 }
 
 #else
