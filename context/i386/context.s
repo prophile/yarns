@@ -32,8 +32,6 @@ ___ctx_sctx:
 ___ctx_start:
 	popl %eax
 	call *%eax
-	mov %esi, %esp
-	int $5
-	.subsections_via_symbols
-	
+	ud2
+	.subsections_via_symbols	
      
