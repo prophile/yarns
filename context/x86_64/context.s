@@ -2,36 +2,39 @@
 	.align  4,0x90
 	.globl  ___ctx_gctx
 ___ctx_gctx:
+	leaq 0(%rip), %rax
+	movq %rax, (%rdi)
+	movq %rbx, 8(%rdi)
+	movq %rbp, 16(%rdi)
+	movq %r12, 24(%rdi)
+	movq %r13, 32(%rdi)
+	movq %r14, 40(%rdi)
+	movq %r15, 48(%rdi)
 	xorq %rax, %rax
-	movq %rdi, %rcx
-	movq %rbx, 8(%rcx)
-	movq %rbp, 16(%rcx)
-	movq %rsi, 24(%rcx)
-	movq %rsp, 32(%rcx)
-	addq $8, 32(%rcx)
-	movq (%rsp), %rdx
-	movq %rdx, 0(%rcx)
 	ret
 
 	.align  4,0x90
 	.globl ___ctx_sctx
 ___ctx_sctx:
+	movq (%rdi), %rcx
+	movq 8(%rdi), %rbx
+	movq 16(%rdi), %rbp
+	movq 24(%rdi), %r12
+	movq 32(%rdi), %r13
+	movq 40(%rdi), %r14
+	movq 48(%rdi), %r15
+	movq %rcx, 8(%rbp)
 	movq $1, %rax
-	movq %rdi, %rcx
-	movq 8(%rcx), %rbx
-	movq 16(%rcx), %rbp
-	movq 24(%rcx), %rsi
-	movq 32(%rcx), %rsp
-	pushq 0(%rcx)
 	ret
 
 	.align 4,0x90
 	.globl ___ctx_start
 ___ctx_start:
-	popq %rcx
-	movq 40(%rdi), %rdi
-	call *%rcx
-	int $5
+	movq %rbp, %rsp
+	movq %r12, %rdi
+	movq %r13, %rax
+	call *%rax
+	ud2
 	.subsections_via_symbols
 	
      

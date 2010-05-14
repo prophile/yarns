@@ -3,7 +3,7 @@
 
 extern long gctx ( yarn_context_t* ctx ) __asm__("___ctx_gctx");
 extern void sctx ( yarn_context_t* ctx ) __asm__("___ctx_sctx");
-extern void start ( yarn_context_t* ctx, void* param, void (*routine)(void*) ) __asm__("___ctx_start");
+extern void start ( void* param, void (*routine)(void*) ) __asm__("___ctx_start");
 
 bool yarn_context_init ( yarn_context_t* oldContext )
 {
@@ -23,25 +23,15 @@ bool yarn_context_make ( yarn_context_t* context, void (*routine)(void*), void* 
 	unsigned long* argp;
 	stack_top = (unsigned char*)context->stackPointer;
 	stack_top += context->stackSize;
-	stack_top -= sizeof(intptr_t);
-	
-	// adjust top of stack
-	stack_top = stack_top - (sizeof(unsigned long) * 2);
-	stack_top = (unsigned char*)((unsigned long)stack_top & ~15);
-	stack_top = stack_top - (2 * sizeof(unsigned long));
-	argp = (unsigned long*)stack_top;
-	
-	// write stack
-	*(argp++) = (unsigned long)start;
-	*(argp++) = (unsigned long)routine;
-	*(argp++) = (unsigned long)udata;
-	*(argp++) = (unsigned long)context;
-	
+
+	// add space for previous stack frame
+	stack_top -= sizeof(unsigned long) * 2;
+	stack_top = (unsigned char*)((unsigned long)stack_top & ~15ULL); // realign the stack to 16 bytes
+
 	// write registers
-	context->param = (unsigned long)udata;
-	context->rsi = (unsigned long)argp;
-	context->rbp = (unsigned long)0;
-	context->rsp = (unsigned long)(stack_top + sizeof(void*));
+	context->rbp = (unsigned long)stack_top;
+	context->r12 = (unsigned long)udata;
+	context->r13 = (unsigned long)routine;
 	context->address = (unsigned long)start;
 	
 	return 0;

@@ -1,6 +1,7 @@
 #include "timer.h"
 #include <stdbool.h>
 #include <sys/time.h>
+#include <stdlib.h>
 
 static bool initted = 0;
 static yarns_time_t initialTime = 0;

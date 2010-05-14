@@ -8,8 +8,7 @@ typedef struct _yarn_context yarn_context_t;
 struct _yarn_context
 {
 	unsigned long address;
-	unsigned long rbx, rbp, rsi, rsp;
-	unsigned long param;
+	unsigned long rbx, rbp, r12, r13, r14, r15;
 	void* stackPointer;
 	unsigned long stackSize;
 };
